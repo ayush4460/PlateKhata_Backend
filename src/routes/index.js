@@ -7,6 +7,7 @@ const menuRoutes = require('./menu.routes');
 const orderRoutes = require('./order.routes');
 const tableRoutes = require('./table.routes');
 const settingsRoutes = require('./settings.routes');
+const uploadRoutes = require('./upload.routes');
 
 // Health check
 router.get('/', (req, res) => {
@@ -30,5 +31,6 @@ router.use('/menu', menuRoutes);
 router.use('/orders', orderRoutes);
 router.use('/tables', tableRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/uploads', uploadRoutes);
 
 module.exports = router;

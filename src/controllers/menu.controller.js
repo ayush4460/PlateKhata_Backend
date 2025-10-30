@@ -1,6 +1,8 @@
+// src/controllers/menu.controller.js
 const MenuService = require('../services/menu.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
+const { deleteImage, extractPublicId } = require('../config/cloudinary');
 
 class MenuController {
   /**
@@ -10,7 +12,8 @@ class MenuController {
   static createItem = catchAsync(async (req, res) => {
     const itemData = {
       ...req.body,
-      imageUrl: req.file ? `/uploads/menu/${req.file.filename}` : null,
+      // Use Cloudinary URL if file uploaded, otherwise null
+      imageUrl: req.file ? req.file.path : null,
     };
 
     const item = await MenuService.createItem(itemData);
@@ -52,8 +55,21 @@ class MenuController {
       ...req.body,
     };
 
+    // If new image uploaded
     if (req.file) {
-      updates.imageUrl = `/uploads/menu/${req.file.filename}`;
+      // Get old image URL to delete from Cloudinary
+      const oldItem = await MenuService.getItemById(req.params.id);
+      
+      if (oldItem && oldItem.image_url) {
+        const oldPublicId = extractPublicId(oldItem.image_url);
+        if (oldPublicId) {
+          await deleteImage(oldPublicId).catch(err =>
+            console.error('Error deleting old image:', err)
+          );
+        }
+      }
+
+      updates.imageUrl = req.file.path; // Cloudinary URL
     }
 
     const item = await MenuService.updateItem(req.params.id, updates);
@@ -64,20 +80,29 @@ class MenuController {
    * Delete menu item
    * DELETE /api/v1/menu/:id
    */
-static deleteItem = catchAsync(async (req, res) => {
-  // parse id and validate
-  const rawId = req.params.id;
-  const id = Number.parseInt(rawId, 10);
+  static deleteItem = catchAsync(async (req, res) => {
+    const rawId = req.params.id;
+    const id = Number.parseInt(rawId, 10);
 
-  if (Number.isNaN(id)) {
-    // If id is invalid, return 400 Bad Request
-    return ApiResponse.badRequest(res, 'Invalid menu item id');
-  }
-  // proceed with numeric id
-  await MenuService.deleteItem(id);
-  return ApiResponse.success(res, null, 'Menu item deleted successfully');
-});
+    if (Number.isNaN(id)) {
+      return ApiResponse.badRequest(res, 'Invalid menu item id');
+    }
 
+    // Get item to retrieve image URL
+    const item = await MenuService.getItemById(id);
+    
+    if (item && item.image_url) {
+      const publicId = extractPublicId(item.image_url);
+      if (publicId) {
+        await deleteImage(publicId).catch(err =>
+          console.error('Error deleting image from Cloudinary:', err)
+        );
+      }
+    }
+
+    await MenuService.deleteItem(id);
+    return ApiResponse.success(res, null, 'Menu item deleted successfully');
+  });
 
   /**
    * Get items by category

@@ -8,7 +8,7 @@ const config = {
 
   // Database - Add DATABASE_URL support
   db: {
-    connectionString: process.env.DATABASE_URL, // Add this for production only
+    connectionString: process.env.DATABASE_URL,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     name: process.env.DB_NAME,
@@ -33,6 +33,13 @@ const config = {
     path: process.env.UPLOAD_PATH || './uploads',
   },
 
+  // Cloudinary
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+  },
+
   // Payment
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID,
@@ -41,11 +48,11 @@ const config = {
 
   // Email
   email: {
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    user: process.env.EMAIL_USER,
-    password: process.env.EMAIL_PASSWORD,
-    from: process.env.EMAIL_FROM,
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    user: process.env.SMTP_USER,
+    password: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM,
   },
 
   // Frontend
@@ -53,15 +60,21 @@ const config = {
 };
 
 // Validate required environment variables
-// Only require individual DB vars if DATABASE_URL is not provided
 const requiredEnvVars = ['JWT_SECRET'];
 
 if (!process.env.DATABASE_URL) {
-  // If no DATABASE_URL, require individual DB variables
   requiredEnvVars.push('DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD');
 } else {
-  // If DATABASE_URL exists, validate it
   requiredEnvVars.push('DATABASE_URL');
+}
+
+// Validate Cloudinary in production
+if (process.env.NODE_ENV === 'production') {
+  requiredEnvVars.push(
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET'
+  );
 }
 
 for (const envVar of requiredEnvVars) {

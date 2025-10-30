@@ -1,10 +1,11 @@
+// src/app.js
 require('dotenv').config();
 require('express-async-errors');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const compression = require('compression');const path = require('path');
+const compression = require('compression');
 const routes = require('./routes');
 const errorMiddleware = require('./middlewares/error.middleware');
 const { apiLimiter } = require('./middlewares/rateLimiter.middleware');
@@ -20,8 +21,7 @@ app.use(helmet());
 // CORS Configuration
 app.use(
   cors({
-    // origin: process.env.CORS_ORIGIN,
-    origin:"*",
+    origin: process.env.CORS_ORIGIN || '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -35,9 +35,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Compression Middleware
 app.use(compression());
 
-// Static Files
-app.use('/api/v1/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use('/api/v1/qrcodes', express.static(path.join(__dirname, '../public/qrcodes')));
+// ❌ REMOVED - No longer serving local static files (using Cloudinary now)
+// app.use('/api/v1/uploads', express.static(path.join(__dirname, '../uploads')));
+// app.use('/api/v1/qrcodes', express.static(path.join(__dirname, '../public/qrcodes')));
 
 // Logging Middleware
 if (process.env.NODE_ENV === 'development') {
