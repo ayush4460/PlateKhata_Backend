@@ -2,11 +2,20 @@
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
+console.log('🔧 Initializing Cloudinary configuration...');
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Log configuration status (without exposing secrets)
+console.log('📋 Cloudinary Config:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '✅ Set' : '❌ Missing',
+  api_key: process.env.CLOUDINARY_API_KEY ? '✅ Set' : '❌ Missing',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing',
 });
 
 // Test connection
@@ -23,7 +32,6 @@ const menuStorage = new CloudinaryStorage({
     transformation: [
       { width: 800, height: 600, crop: 'limit' },
       { quality: 'auto:good' },
-      { fetch_format: 'auto' }
     ],
   },
 });
@@ -49,7 +57,6 @@ const generalStorage = new CloudinaryStorage({
 
 /**
  * Delete image from Cloudinary
- * @param {string} publicId - Public ID of the image
  */
 const deleteImage = async (publicId) => {
   try {
@@ -64,24 +71,19 @@ const deleteImage = async (publicId) => {
 
 /**
  * Extract public ID from Cloudinary URL
- * @param {string} url - Cloudinary URL
- * @returns {string|null} - Public ID or null
  */
 const extractPublicId = (url) => {
   if (!url) return null;
   
   try {
-    // Example URL: https://res.cloudinary.com/demo/image/upload/v1234567890/restaurant/menu-items/abc123.jpg
     const parts = url.split('/');
     const uploadIndex = parts.indexOf('upload');
     
     if (uploadIndex === -1) return null;
     
-    // Get everything after 'upload/v123456789/'
-    const pathParts = parts.slice(uploadIndex + 2); // Skip 'upload' and version
+    const pathParts = parts.slice(uploadIndex + 2);
     const publicIdWithExt = pathParts.join('/');
     
-    // Remove file extension
     return publicIdWithExt.replace(/\.[^/.]+$/, '');
   } catch (error) {
     console.error('Error extracting public ID:', error);

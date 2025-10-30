@@ -1,6 +1,25 @@
 // src/middlewares/upload.middleware.js
 const multer = require('multer');
-const { menuStorage } = require('../config/cloudinary');
+
+// Import Cloudinary storage
+let menuStorage, qrCodeStorage, generalStorage;
+
+try {
+  const cloudinaryConfig = require('../config/cloudinary');
+  menuStorage = cloudinaryConfig.menuStorage;
+  qrCodeStorage = cloudinaryConfig.qrCodeStorage;
+  generalStorage = cloudinaryConfig.generalStorage;
+  console.log('✅ Upload middleware using Cloudinary storage');
+} catch (error) {
+  console.error('❌ Failed to load Cloudinary config:', error.message);
+  console.error('⚠️ Falling back to memory storage (images will not persist!)');
+  
+  // Fallback to memory storage if Cloudinary fails
+  menuStorage = multer.memoryStorage();
+  qrCodeStorage = multer.memoryStorage();
+  generalStorage = multer.memoryStorage();
+}
+
 const ApiError = require('../utils/apiError');
 
 // Configure multer with Cloudinary storage
@@ -21,13 +40,13 @@ const upload = multer({
   },
 });
 
-// Export default upload instance (for menu.routes.js compatibility)
+// Export default upload instance
 module.exports = upload;
 
-// Also export named exports for upload.routes.js
+// Also export named exports
 module.exports.uploadMenuImage = upload;
 module.exports.uploadQRCode = multer({
-  storage: require('../config/cloudinary').qrCodeStorage,
+  storage: qrCodeStorage,
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
@@ -37,7 +56,7 @@ module.exports.uploadQRCode = multer({
   },
 });
 module.exports.uploadGeneral = multer({
-  storage: require('../config/cloudinary').generalStorage,
+  storage: generalStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
