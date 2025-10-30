@@ -1,0 +1,6 @@
+# Create .gitkeep files for empty folders
+echo. > logs\.gitkeep
+echo. > uploads\menu\.gitkeep
+echo. > public\qrcodes\.gitkeep
+echo. > tests\unit\.gitkeep
+echo. > tests\integration\.gitkeep
