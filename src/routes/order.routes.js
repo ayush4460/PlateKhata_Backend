@@ -8,7 +8,6 @@ const validate = require('../middlewares/validate.middleware');
 const {
   createOrderValidator,
   updateOrderStatusValidator,
-  // --- IMPORT NEW VALIDATOR ---
   updatePaymentStatusValidator,
 } = require('../validators/order.validator');
 const { ROLES } = require('../config/constants');
@@ -24,16 +23,15 @@ router.get(
   OrderController.getKitchenOrders
 );
 
-// --- MODIFIED ROUTE ---
+
 // This route now uses optionalAuth.
 // Customers (no token) can access it, but the controller will limit them.
 router.get(
   '/',
-  optionalAuth, // <-- CHANGED from 'authenticate'
-  // 'authorize' middleware removed, logic is moved to controller
+  optionalAuth,
   OrderController.getAllOrders
 );
-// --- END MODIFICATION ---
+
 
 router.get(
   '/stats',
@@ -54,17 +52,25 @@ router.patch(
   OrderController.updateOrderStatus
 );
 
-// --- ADD NEW ROUTE FOR PAYMENT ---
+
 // Route for changing PAYMENT STATUS (e.g., Pending -> Approved)
 router.patch(
   '/:id/payment',
-  authenticate, // Only authenticated staff can approve payment
-  authorize(ROLES.ADMIN, ROLES.WAITER), // Or whichever roles can take payment
-  updatePaymentStatusValidator, // Use the new validator
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.WAITER),
+  updatePaymentStatusValidator,
   validate,
-  OrderController.updatePaymentStatus // Use the new controller function
+  OrderController.updatePaymentStatus
 );
-// --- END NEW ROUTE ---
+
+// Payment request route for customers
+router.patch(
+  '/:id/payment-request',
+  updatePaymentStatusValidator,
+  validate,
+  OrderController.requestPaymentUpdate
+);
+
 
 router.patch(
   '/:id/cancel',

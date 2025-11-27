@@ -12,7 +12,6 @@ class OrderController {
    */
   static createOrder = catchAsync(async (req, res) => {
     const order = await OrderService.createOrder(req.body);
-    // This line now works
     socketService.emitNewOrder(order);
     return ApiResponse.created(res, order, 'Order placed successfully');
   });
@@ -70,17 +69,35 @@ class OrderController {
    * PATCH /api/v1/orders/:id/payment
    */
   static updatePaymentStatus = catchAsync(async (req, res) => {
-    const { paymentStatus } = req.body; // e.g., 'Approved'
-    const order = await OrderService.updatePaymentStatus(req.params.id, paymentStatus);
-    
-    // This line now works
+    const { paymentStatus, paymentMethod } = req.body;
+    const order = await OrderService.updatePaymentStatus(req.params.id, paymentStatus, paymentMethod);
     socketService.emitOrderStatusUpdate(
       order.order_id,
-      order.order_status, // Send the *current* order status
+      order.order_status,
       order.table_id
     );
 
     return ApiResponse.success(res, order, 'Payment status updated successfully');
+  });
+
+  /**
+   * Request payment update
+   * PATCH /api/v1/orders/:id/payment-request
+   */
+  static requestPaymentUpdate = catchAsync(async (req, res) => {
+    const { paymentStatus, paymentMethod } = req.body;
+    if (paymentStatus !== 'Requested') {
+        return ApiResponse.forbidden(res, 'Customers can only request payment verification.');
+    }
+
+    const order = await OrderService.updatePaymentStatus(req.params.id, paymentStatus, paymentMethod);
+    socketService.emitOrderStatusUpdate(
+      order.order_id,
+      order.order_status,
+      order.table_id
+    );
+
+    return ApiResponse.success(res, order, 'Payment verification requested');
   });
 
   /**
@@ -98,12 +115,10 @@ class OrderController {
    */
   static cancelOrder = catchAsync(async (req, res) => {
     const order = await OrderService.cancelOrder(req.params.id);
-    
-    // This line now works
-    if (order) { // Check if cancellation was successful
+    if (order) {
       socketService.emitOrderStatusUpdate(
         order.order_id,
-        order.order_status, // Send the new 'cancelled' status
+        order.order_status,
         order.table_id
       );
     }

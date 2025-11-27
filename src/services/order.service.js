@@ -5,7 +5,7 @@ const MenuModel = require('../models/menu.model');
 const TableModel = require('../models/table.model');
 const db = require('../config/database');
 const ApiError = require('../utils/apiError');
-const EmailService = require('./email.service');
+//const EmailService = require('./email.service');
 const SettingsService = require('./settings.service'); // Used to get the tax rate
 
 class OrderService {
@@ -13,36 +13,27 @@ class OrderService {
    * Create new order
    */
   static async createOrder(orderData) {
-    const { tableId, items, customerName, customerPhone, customerEmail, specialInstructions } =
-      orderData;
+    const { tableId, items, customerName, customerPhone, specialInstructions, orderType } = orderData;
 
     // Verify table exists
     const table = await TableModel.findById(tableId);
     if (!table) { throw ApiError.notFound('Table not found'); }
 
 
-    let currentTaxRate = 0.08; // Default fallback
-    try {
-        const taxRateSetting = await SettingsService.getSetting('tax_rate');
-        if (taxRateSetting) {
-          const parsedRate = parseFloat(taxRateSetting);
-          if (!isNaN(parsedRate)) {
-            currentTaxRate = parsedRate; // Use the rate from the database
-          } else {
-            console.error(`[OrderService] Invalid tax rate in settings: ${taxRateSetting}`);
-          }
-        } else {
-           console.warn(`[OrderService] 'tax_rate' setting not found. Using default ${currentTaxRate}`);
-        }
-    } catch (err) {
-        console.error("Failed to fetch tax rate setting, using default.", err);
-    }
+    let currentTaxRate = 0.08; // Default fallback for tax
+    let currentDiscountRate = 0.00; // Default fallback for discount
 
+    try {
+        const taxSetting = await SettingsService.getSetting('tax_rate');
+        if (taxSetting) currentTaxRate = parseFloat(taxSetting) || 0;
+
+        const discountSetting = await SettingsService.getSetting('discount_rate');
+        if (discountSetting) currentDiscountRate = parseFloat(discountSetting) || 0;
+    } catch (err) { console.error("Failed to fetch settings:", err); }
 
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
-
 
       let subtotal = 0;
       const orderItems = [];
@@ -54,7 +45,7 @@ class OrderService {
 
         const price = parseFloat(menuItem.price);
         if (isNaN(price)) { throw ApiError.internalError(`Invalid price for item ${item.itemId}`); }
-        
+
         const itemTotal = price * item.quantity;
         subtotal += itemTotal;
 
@@ -69,17 +60,17 @@ class OrderService {
       }
 
       const taxAmount = subtotal * currentTaxRate;
-      const discountAmount = 0; // Default discount
+      const discountAmount = subtotal * currentDiscountRate;
       const finalTotalAmount = subtotal + taxAmount - discountAmount;
 
 
-      // --- Pass All Amounts to Model ---
+
       const order = await OrderModel.create(
         {
           tableId,
           customerName,
           customerPhone,
-          customerEmail, // Pass email to model
+          customerEmail: null,
           subtotal: subtotal.toFixed(2),
           taxAmount: taxAmount.toFixed(2),
           discountAmount: discountAmount.toFixed(2),
@@ -88,6 +79,7 @@ class OrderService {
           specialInstructions,
           orderStatus: 'pending',
           paymentStatus: 'Pending',
+          orderType: orderType || 'regular',
         },
         client
       );
@@ -105,7 +97,7 @@ class OrderService {
           // This call must be in the CONTROLLER, not the service
           // socketService.emitNewOrder(completeOrder);
       }
-      
+
       return completeOrder;
 
     } catch (error) {
@@ -168,40 +160,39 @@ class OrderService {
         );
       }
     } else {
-       throw ApiError.badRequest(`Cannot change status from unknown state: ${currentStatus}`);
+      throw ApiError.badRequest(`Cannot change status from unknown state: ${currentStatus}`);
     }
-    
+
     return await OrderModel.updateStatus(orderId, status);
   }
 
   /**
-   * Update *only* the payment status
+   * Update the payment status and method
    */
-  static async updatePaymentStatus(orderId, paymentStatus) {
+  static async updatePaymentStatus(orderId, paymentStatus, paymentMethod = null) {
     const order = await OrderModel.findById(orderId);
-    if (!order) {
-      throw ApiError.notFound('Order not found');
-    }
-    
-    // Logic: Only allow payment approval if order is 'ready' or 'served'
+    if (!order) { throw ApiError.notFound('Order not found'); }
+
     if (paymentStatus === 'Approved' && !(order.order_status === 'ready' || order.order_status === 'served')) {
-       throw ApiError.badRequest(`Cannot approve payment. Order status is '${order.order_status}', not 'ready' or 'served'.`);
+      throw ApiError.badRequest(`Cannot approve payment. Order status is '${order.order_status}'.`);
     }
-    if (order.order_status === 'cancelled') {
-        throw ApiError.badRequest('Cannot approve payment for a cancelled order.');
-    }
-    
+    if (order.order_status === 'cancelled') { throw ApiError.badRequest('Cannot approve payment for cancelled order.'); }
+
     let updatedOrder;
-    if (paymentStatus === 'Approved') {
-        // This function updates BOTH payment_status and order_status
+
+    // If customer requests payment, we just update status and method
+    if (paymentStatus === 'Requested') {
+        updatedOrder = await OrderModel.updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod);
+    }
+    // If admin approves, we update status to Completed/Approved
+    else if (paymentStatus === 'Approved') {
         updatedOrder = await OrderModel.updatePaymentAndOrderState(orderId, paymentStatus, 'completed');
     } else {
-        // For other payment statuses (like 'Failed'), just update payment
         updatedOrder = await OrderModel.updatePaymentStatusOnly(orderId, paymentStatus);
     }
 
     // --- SEND EMAIL ON APPROVAL ---
-    if (updatedOrder.payment_status === 'Approved' && updatedOrder.customer_email) {
+/*    if (updatedOrder.payment_status === 'Approved' && updatedOrder.customer_email) {
         // Fetch the full order details *with items* for the receipt
         const fullOrderForReceipt = await OrderModel.findById(orderId);
         if (fullOrderForReceipt) {
@@ -212,9 +203,9 @@ class OrderService {
             console.error(`[EmailService] Could not fetch full order ${orderId} for receipt.`);
         }
     }
-    // --- END SEND EMAIL ---
+*/
 
-    return updatedOrder; // Return the updated order from the DB
+    return updatedOrder;
   }
 
   /**

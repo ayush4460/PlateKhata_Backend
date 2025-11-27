@@ -34,14 +34,16 @@ exports.createOrderValidator = [
     .optional()
     .matches(/^[6-9]\d{9}$/)
     .withMessage('Invalid phone number'),
-  
-  // --- ADD THIS VALIDATOR ---
+
+// --- COMMENTED OUT FOR FUTURE USE ---
+  /*
   body('customerEmail')
     .optional()
     .isEmail()
     .normalizeEmail()
     .withMessage('Please provide a valid email address'),
-  // --- END ADDITION ---
+  */
+
 
   body('specialInstructions')
     .optional()
@@ -60,6 +62,10 @@ exports.updateOrderStatusValidator = [
 exports.updatePaymentStatusValidator = [
   param('id').isInt().withMessage('Invalid order ID'),
   body('paymentStatus')
-    .isIn(['Pending', 'Approved', 'Failed', 'Refunded']) // Match your DB constraints
+    .isIn(['Pending', 'Requested', 'Approved', 'Failed', 'Refunded'])
     .withMessage('Invalid payment status'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['Cash', 'UPI', 'Card', 'Other'])
+    .withMessage('Invalid payment method'),
 ];

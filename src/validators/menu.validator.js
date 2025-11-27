@@ -13,7 +13,7 @@ exports.createMenuItemValidator = [
     .withMessage('Description must not exceed 500 characters'),
 
   body('category')
-    .isIn(['Beverages', 'Starters', 'Main Course', 'Desserts', 'Breads', 'Specials'])
+    .isIn(['Beverages', 'Starters', 'Main Course', 'Desserts', 'Breads', 'Specials','Salads','Soups','Appetizers'])
     .withMessage('Invalid category'),
 
   body('price')

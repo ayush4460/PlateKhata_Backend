@@ -4,21 +4,19 @@ const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 
 class SettingsController {
-  
-  /**
-   * Update the tax rate setting
-   * PATCH /api/v1/settings/tax
-   */
-  static updateTaxRate = catchAsync(async (req, res) => {
-    const { taxRate } = req.body;
+  static updateSettings = catchAsync(async (req, res) => {
+    const { taxRate, discountRate } = req.body;
     
-    // Call the service function to save the tax rate to the DB
-    await SettingsService.updateSetting('tax_rate', taxRate);
+    if (taxRate !== undefined) {
+        await SettingsService.updateSetting('tax_rate', taxRate);
+    }
     
-    return ApiResponse.success(res, { newTaxRate: taxRate }, 'Tax rate updated successfully.');
+    if (discountRate !== undefined) {
+        await SettingsService.updateSetting('discount_rate', discountRate);
+    }
+    
+    return ApiResponse.success(res, { taxRate, discountRate }, 'Settings updated successfully.');
   });
-
-
 }
 
 module.exports = SettingsController;

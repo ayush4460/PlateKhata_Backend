@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optional: Add a comment
+
 COMMENT ON TABLE settings IS 'Stores global application settings like tax rate.';

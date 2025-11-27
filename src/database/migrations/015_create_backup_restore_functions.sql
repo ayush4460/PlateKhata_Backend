@@ -22,7 +22,7 @@ BEGIN
     
     -- Check 2: Payments without orders
     RETURN QUERY
-    SELECT 
+    SELECT
         'Payments without orders'::TEXT,
         CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END,
         'Found ' || COUNT(*) || ' orphaned payments'
