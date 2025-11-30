@@ -3,6 +3,7 @@ const QRCodeService = require('../services/qrcode.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 const ApiError = require('../utils/apiError');
+const TableService = require('../services/table.service');
 
 class TableController {
   /**
@@ -68,6 +69,16 @@ class TableController {
   });
 
   /**
+   * clear table
+   * POST /api/v1/tables/:id/clear
+   */
+  static clearTable = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    await TableService.clearTable(id);
+    return ApiResponse.success(res, null, 'Table session cleared successfully');
+  });
+
+  /**
    * Delete table
    * DELETE /api/v1/tables/:id
    */
@@ -77,10 +88,7 @@ class TableController {
       throw ApiError.notFound('Table not found');
     }
 
-    // Delete QR code file
     await QRCodeService.deleteQRCode(table.qr_code_url);
-
-    // Delete table
     await TableModel.delete(req.params.id);
 
     return ApiResponse.success(res, null, 'Table deleted successfully');

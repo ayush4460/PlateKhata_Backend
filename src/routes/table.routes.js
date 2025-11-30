@@ -66,6 +66,13 @@ router.put(
   TableController.updateTable
 );
 
+router.post(
+  '/:id/clear',
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.WAITER),
+  TableController.clearTable
+);
+
 router.delete(
   '/:id',
   authenticate,

@@ -6,51 +6,125 @@ class OrderModel {
    * Create order
    */
   static async create(orderData, client = db) {
-    const {
-      tableId,
-      customerName,
-      customerPhone,
-      //customerEmail,
-      subtotal,
-      taxAmount,
-      totalAmount,
-      appliedTaxRate,
-      specialInstructions,
-      orderStatus = 'pending',
-      paymentStatus = 'Pending',
-      discountAmount = 0,
-      orderType = 'regular',
-    } = orderData;
+  const {
+    tableId,
+    customerName,
+    customerPhone,
+    customerEmail,
+    subtotal,
+    taxAmount,
+    totalAmount,
+    appliedTaxRate,
+    specialInstructions,
+    orderStatus = 'pending',
+    paymentStatus = 'Pending',
+    discountAmount = 0,
+    orderType = 'regular',
+    sessionId
+  } = orderData;
 
-    // This query now includes customer_email
-    const query = `
-      INSERT INTO orders (
-          table_id, customer_name, customer_phone, customer_email,
-          subtotal, tax_amount, discount_amount, total_amount, applied_tax_rate,
-          special_instructions, order_status, payment_status, order_type
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) -- $13 parameters
-      RETURNING *
-    `;
+  const query = `
+    INSERT INTO orders (
+        table_id, customer_name, customer_phone, customer_email,
+        subtotal, tax_amount, discount_amount, total_amount, applied_tax_rate,
+        special_instructions, order_status, payment_status, order_type, order_number, session_id
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    RETURNING *
+  `;
 
-    const result = await client.query(query, [
-      tableId,
-      customerName,
-      customerPhone,
-      null,
-      subtotal,
-      taxAmount,
-      discountAmount,
-      totalAmount,
-      appliedTaxRate,
-      specialInstructions,
-      orderStatus,
-      paymentStatus,
-      orderType,
-    ]);
+  const maxAttempts = 5;
+  let attempts = 0;
 
-    return result.rows[0];
+  while (attempts < maxAttempts) {
+    attempts++;
+    
+    // Generate a new order number for each attempt
+    const order_number = await this.generateOrderNumber(client);
+    console.log(`[OrderModel] Attempt ${attempts}/${maxAttempts} - Order number: ${order_number}`);
+
+    try {
+      const result = await client.query(query, [
+        tableId, customerName, customerPhone, null,
+        subtotal, taxAmount, discountAmount, totalAmount, appliedTaxRate,
+        specialInstructions, orderStatus, paymentStatus, orderType, order_number, sessionId
+      ]);
+      
+      console.log(`[OrderModel] Order created successfully: ${result.rows[0].order_id}`);
+      return result.rows[0];
+      
+    } catch (error) {
+      // Check if it's a duplicate order number constraint violation
+      if (error.code === '23505' && error.constraint?.includes('order_number')) {
+        console.warn(`[OrderModel] Duplicate order number ${order_number}. Attempt ${attempts}/${maxAttempts}`);
+        
+        if (attempts >= maxAttempts) {
+          throw new Error(`Failed to generate unique order number after ${maxAttempts} attempts.`);
+        }
+        
+        // Add small delay to reduce collision probability
+        await new Promise(resolve => setTimeout(resolve, 50 * attempts));
+        
+        // Continue to next iteration to try with a NEW order number
+        continue;
+      }
+      
+      // For any other error, throw immediately (don't retry)
+      console.error('[OrderModel] Order creation failed with error:', error.code, error.message);
+      throw error;
+    }
   }
+  
+  throw new Error('Failed to create order after maximum retry attempts.');
+}
+
+  /**
+   * Generate unique order number
+   */
+  static async generateOrderNumber(client) {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const datePrefix = `${year}${month}${day}`;
+
+  const query = `
+    SELECT order_number
+    FROM orders
+    WHERE order_number LIKE $1
+    ORDER BY order_number DESC
+    LIMIT 1
+  `;
+
+  try {
+    const result = await client.query(query, [`${datePrefix}%`]);
+
+    let sequenceNum = 1;
+    if (result.rows.length > 0) {
+      const lastOrderNumber = result.rows[0].order_number;
+      const lastSequence = parseInt(lastOrderNumber.slice(-4), 10);
+      if (!isNaN(lastSequence)) {
+        sequenceNum = lastSequence + 1;
+      }
+    }
+
+    // Add safety check for sequence overflow
+    if (sequenceNum > 9999) {
+      console.warn('[OrderModel] Sequence exceeded 9999, using timestamp fallback');
+      const timestamp = Date.now().toString().slice(-4);
+      sequenceNum = parseInt(timestamp, 10);
+    }
+
+    const orderNumber = `${datePrefix}${String(sequenceNum).padStart(4, '0')}`;
+    return orderNumber;
+    
+  } catch (error) {
+    console.error('[OrderModel] Error generating order number:', error);
+    // Fallback: use timestamp-based number to ensure uniqueness
+    const timestamp = Date.now().toString().slice(-6);
+    return `${datePrefix}${timestamp.slice(-4)}`;
+  }
+}
 
   /**
    * Create order items
@@ -83,11 +157,12 @@ class OrderModel {
     return orderItems;
   }
 
-
   /**
-   * Get all orders
+   * Get all orders with filters
    */
   static async findAll(filters = {}) {
+    console.log('[DEBUG MODEL findAll] filters:', filters);
+    
     let query = `
       SELECT o.*, o.payment_method, t.table_number,
         json_agg(
@@ -107,33 +182,59 @@ class OrderModel {
       LEFT JOIN order_items oi ON o.order_id = oi.order_id
       WHERE 1=1
     `;
+    
     const params = [];
     let paramCount = 1;
 
+    // CRITICAL: Filter by session_id FIRST (most restrictive)
+    if (filters.sessionId) {
+      query += ` AND o.session_id = $${paramCount++}`;
+      params.push(filters.sessionId);
+      console.log('[DEBUG MODEL findAll] Added sessionId filter:', filters.sessionId);
+    }
+
+    // Filter by table_id (secondary filter)
     if (filters.tableId) {
       query += ` AND o.table_id = $${paramCount++}`;
       params.push(filters.tableId);
+      console.log('[DEBUG MODEL findAll] Added tableId filter:', filters.tableId);
     }
 
+    // Status handling: accepts array or single value
     if (filters.status) {
       if (Array.isArray(filters.status)) {
-        query += ` AND o.order_status = ANY($${paramCount}::varchar[])`;
-        params.push(filters.status);
+        const lowered = filters.status.map(s => String(s).toLowerCase());
+        query += ` AND LOWER(o.order_status) = ANY($${paramCount}::varchar[])`;
+        params.push(lowered);
         paramCount++;
+        console.log('[DEBUG MODEL findAll] Added status array filter:', lowered);
       } else {
-        query += ` AND o.order_status = $${paramCount}`;
-        params.push(filters.status);
+        query += ` AND LOWER(o.order_status) = $${paramCount}`;
+        params.push(String(filters.status).toLowerCase());
         paramCount++;
+        console.log('[DEBUG MODEL findAll] Added single status filter:', filters.status);
       }
     }
 
+    // Date filter
     if (filters.date) {
       query += ` AND DATE(o.created_at) = $${paramCount++}`;
       params.push(filters.date);
+      console.log('[DEBUG MODEL findAll] Added date filter:', filters.date);
     }
 
     query += ' GROUP BY o.order_id, t.table_number ORDER BY o.created_at DESC';
+
+    // Limit
+    const limit = filters.limit ? parseInt(filters.limit, 10) : 200;
+    query += ` LIMIT $${paramCount++}`;
+    params.push(limit);
+
+    console.log('[DEBUG MODEL findAll] Final query params:', params);
+
     const result = await db.query(query, params);
+    console.log('[DEBUG MODEL findAll] Result count:', result.rows.length);
+    
     return result.rows;
   }
 
@@ -161,12 +262,13 @@ class OrderModel {
       WHERE o.order_id = $1
       GROUP BY o.order_id, t.table_number
     `;
+
     const result = await db.query(query, [orderId]);
-    return result.rows[0];
+    return result.rows[0] || null;
   }
 
   /**
-   * Update *only* the order status
+   * Update order status only
    */
   static async updateStatus(orderId, status) {
     const query = `
@@ -184,11 +286,19 @@ class OrderModel {
    * Update payment status and method
    */
   static async updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod) {
-    const query = `UPDATE orders SET payment_status = $1, payment_method = $2, updated_at = CURRENT_TIMESTAMP WHERE order_id = $3 RETURNING *`;
+    const query = `
+      UPDATE orders 
+      SET payment_status = $1, payment_method = $2, updated_at = CURRENT_TIMESTAMP 
+      WHERE order_id = $3 
+      RETURNING *
+    `;
     const result = await db.query(query, [paymentStatus, paymentMethod, orderId]);
     return result.rows[0];
   }
 
+  /**
+   * Update payment status only
+   */
   static async updatePaymentStatusOnly(orderId, paymentStatus) {
     const query = `
       UPDATE orders
@@ -201,7 +311,7 @@ class OrderModel {
   }
 
   /**
-   * Update *both* payment status and order status (e.g., on approval)
+   * Update both payment status and order status
    */
   static async updatePaymentAndOrderState(orderId, paymentStatus, orderStatus) {
     const query = `
@@ -215,10 +325,10 @@ class OrderModel {
   }
 
   /**
-   * Get kitchen orders
+   * Get kitchen orders (active orders only)
    */
   static async getKitchenOrders() {
-     const query = `
+    const query = `
       SELECT o.*, t.table_number,
         json_agg(
           json_build_object(
@@ -246,9 +356,10 @@ class OrderModel {
    */
   static async cancel(orderId) {
     const query = `
-      UPDATE orders SET order_status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      UPDATE orders 
+      SET order_status = 'cancelled', updated_at = CURRENT_TIMESTAMP
       WHERE order_id = $1 AND order_status IN ('pending', 'confirmed')
-       RETURNING *
+      RETURNING *
     `;
     const result = await db.query(query, [orderId]);
     return result.rows[0];

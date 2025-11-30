@@ -74,22 +74,27 @@ const deleteImage = async (publicId) => {
  */
 const extractPublicId = (url) => {
   if (!url) return null;
-  
+
   try {
     const parts = url.split('/');
     const uploadIndex = parts.indexOf('upload');
-    
+
     if (uploadIndex === -1) return null;
-    
-    const pathParts = parts.slice(uploadIndex + 2);
+
+    const pathParts = parts.slice(uploadIndex + 1);
+        if (pathParts.length > 0 && pathParts[0].match(/^v\d+$/)) {
+            pathParts.shift();
+        }
     const publicIdWithExt = pathParts.join('/');
-    
+
     return publicIdWithExt.replace(/\.[^/.]+$/, '');
   } catch (error) {
     console.error('Error extracting public ID:', error);
     return null;
   }
 };
+
+
 
 module.exports = {
   cloudinary,

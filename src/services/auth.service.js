@@ -56,7 +56,6 @@ class AuthService {
    * Login user
    */
   static async login(email, password) {
-    // Find user
     const user = await UserModel.findByEmail(email);
     if (!user) {
       throw ApiError.unauthorized('Invalid credentials');

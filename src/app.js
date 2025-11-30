@@ -21,10 +21,12 @@ app.use(helmet());
 // CORS Configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: process.env.CORS_ORIGIN || '*' || 'http://localhost:5000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-session-token', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['x-session-token', 'Authorization']
+
   })
 );
 

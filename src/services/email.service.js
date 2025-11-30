@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 // No need for config file, we'll read directly from process.env
 
 class EmailService {
-  constructor() {
+  /*constructor() {
     // Create transporter object using your .env variables
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST, // Reads SMTP_HOST
@@ -25,7 +25,7 @@ class EmailService {
   /**
    * Helper function to generate a simple HTML receipt
    */
-  generateReceiptHtml(order) {
+  /*generateReceiptHtml(order) {
     // Ensure items is an array before mapping
     const itemsHtml = (order.items || [])
       .map(item => `
@@ -79,7 +79,7 @@ class EmailService {
   /**
    * Send the receipt email
    */
-  async sendReceipt(order) {
+  /*async sendReceipt(order) {
     if (!order.customer_email) {
       console.log(`[EmailService] Order ${order.order_id} has no email, skipping receipt.`);
       return;
@@ -101,7 +101,7 @@ class EmailService {
     } catch (error) {
       console.error(`[EmailService] Error sending receipt for order ${order.order_id}:`, error);
     }
-  }
+  }*/
 }
 
 // Export a single instance

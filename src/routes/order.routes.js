@@ -5,6 +5,7 @@ const OrderController = require('../controllers/order.controller');
 const { authenticate, optionalAuth } = require('../middlewares/auth.middleware');
 const authorize = require('../middlewares/rbac.middleware');
 const validate = require('../middlewares/validate.middleware');
+const TableController = require('../controllers/table.controller');
 const {
   createOrderValidator,
   updateOrderStatusValidator,
@@ -12,7 +13,7 @@ const {
 } = require('../validators/order.validator');
 const { ROLES } = require('../config/constants');
 
-// Public/Customer routes
+// Public routes
 router.post('/', createOrderValidator, validate, OrderController.createOrder);
 
 // Kitchen routes
@@ -22,7 +23,6 @@ router.get(
   authorize(ROLES.KITCHEN, ROLES.ADMIN),
   OrderController.getKitchenOrders
 );
-
 
 // This route now uses optionalAuth.
 // Customers (no token) can access it, but the controller will limit them.
@@ -71,6 +71,12 @@ router.patch(
   OrderController.requestPaymentUpdate
 );
 
+router.post(
+  '/:id/clear',
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.WAITER),
+  TableController.clearTable
+);
 
 router.patch(
   '/:id/cancel',

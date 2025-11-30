@@ -49,8 +49,8 @@ class TableModel {
    */
   static async update(tableId, updates) {
     const fields = [];
-    const params = [];
-    let paramCount = 1;
+    const params = [tableId];
+    let paramCount = 2;
 
     if (updates.tableNumber) {
       fields.push(`table_number = $${paramCount}`);
@@ -77,12 +77,12 @@ class TableModel {
     }
 
     fields.push('updated_at = CURRENT_TIMESTAMP');
-    params.push(tableId);
+    if (fields.length === 0) return null;
 
     const query = `
       UPDATE tables
       SET ${fields.join(', ')}
-      WHERE table_id = $${paramCount}
+      WHERE table_id = $1
       RETURNING *
     `;
 
