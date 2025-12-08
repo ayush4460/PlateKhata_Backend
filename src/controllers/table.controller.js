@@ -10,22 +10,39 @@ class TableController {
    * Create table
    * POST /api/v1/tables
    */
+  // controllers/table.controller.js
   static createTable = catchAsync(async (req, res) => {
     const { tableNumber, capacity } = req.body;
 
     // Check if table number already exists
     const existing = await TableModel.findByNumber(tableNumber);
+
     if (existing) {
+      // If it exists but is soft-deleted (disabled), RESTORE it
+      if (existing.is_available === false) {
+        // Regenerate a QR for the same table_id / table_number
+        const qrCodeUrl = await QRCodeService.generateTableQRCode(
+          existing.table_id,
+          existing.table_number
+        );
+
+        const restored = await TableModel.update(existing.table_id, {
+          capacity,
+          isAvailable: true,
+          qrCodeUrl,
+        });
+
+        return ApiResponse.created(res, restored, 'Table restored successfully');
+      }
+
       throw ApiError.conflict('Table number already exists');
     }
 
-    // Generate QR code
     const qrCodeUrl = await QRCodeService.generateTableQRCode(
       tableNumber,
       tableNumber
     );
 
-    // Create table
     const table = await TableModel.create({
       tableNumber,
       capacity,
@@ -34,6 +51,7 @@ class TableController {
 
     return ApiResponse.created(res, table, 'Table created successfully');
   });
+
 
   /**
    * Get all tables
@@ -83,13 +101,9 @@ class TableController {
    * DELETE /api/v1/tables/:id
    */
   static deleteTable = catchAsync(async (req, res) => {
-    const table = await TableModel.findById(req.params.id);
-    if (!table) {
-      throw ApiError.notFound('Table not found');
-    }
+    const { id } = req.params;
 
-    await QRCodeService.deleteQRCode(table.qr_code_url);
-    await TableModel.delete(req.params.id);
+    await TableService.deleteTable(id);
 
     return ApiResponse.success(res, null, 'Table deleted successfully');
   });

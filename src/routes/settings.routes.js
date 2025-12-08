@@ -8,7 +8,7 @@ const validate = require('../middlewares/validate.middleware');
 const { updateSettingsValidator } = require('../validators/settings.validator');
 const { ROLES } = require('../config/constants');
 
-// Update settings (Tax, Discount)
+// Update settings (Tax, Discount, UpiId)
 router.patch(
   '/',
   authenticate,
@@ -17,5 +17,7 @@ router.patch(
   validate,
   SettingsController.updateSettings
 );
+
+router.get('/public', SettingsController.getPublicSettings);
 
 module.exports = router;

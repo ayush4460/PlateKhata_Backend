@@ -11,4 +11,11 @@ exports.updateSettingsValidator = [
         .optional()
         .isFloat({ min: 0, max: 1.0 })
         .withMessage('Discount rate must be between 0 and 1.0'),
+
+    body('upiId')
+        .optional()
+        .isString()
+        .trim()
+        .matches(/^[A-Za-z0-9.\-_]+@[A-Za-z0-9.\-_]+$/)
+        .withMessage('Invalid UPI ID format'),
 ];

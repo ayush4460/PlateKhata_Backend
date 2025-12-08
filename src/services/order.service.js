@@ -19,14 +19,32 @@ class OrderService {
     const table = await TableModel.findById(tableId);
     if (!table) { throw ApiError.notFound('Table not found'); }
 
+    if (table.is_available === false) {
+      throw ApiError.badRequest('This table is disabled and cannot accept new orders.');
+}
+
     // Validate or Create Session
-    let session;
-    if (sessionToken) {
-      session = await SessionService.validateSession(sessionToken);
-    }
-    if (!session) {
-      session = await SessionService.getOrCreateSession(tableId);
-    }
+    let session = null;
+      if (sessionToken) {
+        const s = await SessionService.validateSession(sessionToken);
+
+        if (s) {
+          const now = new Date();
+
+          const notExpired = !s.expires_at || new Date(s.expires_at) > now;
+
+          if (s.is_active && notExpired) {
+            session = s;
+          } else {
+            console.log('[OrderService] Ignoring inactive/expired session for new order:', s.session_id);
+          }
+        }
+      }
+
+      if (!session) {
+        session = await SessionService.getOrCreateSession(tableId);
+      }
+
 
     let fName = customerName;
     let fPhone = customerPhone;
@@ -59,25 +77,25 @@ class OrderService {
       const discountSetting = await SettingsService.getSetting('discount_rate');
       if (discountSetting) currentDiscountRate = parseFloat(discountSetting) || 0;
     } catch (err) { 
-      console.error("[OrderService] Failed to fetch settings:", err); 
+      console.error("[OrderService] Failed to fetch settings:", err);
     }
 
     let subtotal = 0;
     const orderItems = [];
-    
+
     // Validate all items first (before transaction)
     for (const item of items) {
       const menuItem = await MenuModel.findById(item.itemId);
-      if (!menuItem) { 
-        throw ApiError.notFound(`Menu item ${item.itemId} not found`); 
+      if (!menuItem) {
+        throw ApiError.notFound(`Menu item ${item.itemId} not found`);
       }
-      if (!menuItem.is_available) { 
-        throw ApiError.badRequest(`${menuItem.name} is not available`); 
+      if (!menuItem.is_available) {
+        throw ApiError.badRequest(`${menuItem.name} is not available`);
       }
 
       const price = parseFloat(menuItem.price);
-      if (isNaN(price)) { 
-        throw ApiError.internalError(`Invalid price for item ${item.itemId}`); 
+      if (isNaN(price)) {
+        throw ApiError.internalError(`Invalid price for item ${item.itemId}`);
       }
 
       subtotal += price * item.quantity;
@@ -178,7 +196,7 @@ class OrderService {
    */
   static async getAllOrders(filters = {}) {
     const f = { ...filters };
-    console.log('[DEBUG SRV getAllOrders] incoming filters:', f);
+    //console.log('[DEBUG SRV getAllOrders] incoming filters:', f);
 
     // STAFF/ADMIN: Full access to all orders
     if (f.includeAllForStaff) {
@@ -191,7 +209,7 @@ class OrderService {
     if (f.sessionToken) {
       try {
         const session = await SessionService.validateSession(f.sessionToken);
-        
+
         if (!session) {
           console.warn('[OrderService] Invalid session token');
           return [];
@@ -204,22 +222,23 @@ class OrderService {
         }
 
         // Check if session is active
-        if (!session.is_active) {
-          console.warn('[OrderService] Session is inactive');
+        const now = new Date();
+        if (session.expires_at && new Date(session.expires_at) <= now) {
+          console.warn('[OrderService] Session expired');
           return [];
         }
 
         // Query orders for this session
         f.sessionId = session.session_id;
         delete f.sessionToken;
-        
+
         //  Show all orders EXCEPT cancelled
 
         f.status = ['pending', 'confirmed', 'preparing', 'ready', 'served', 'completed'];
-        
+
         console.log('[DEBUG SRV getAllOrders] Customer query - session:', f.sessionId);
         return await OrderModel.findAll(f);
-        
+
       } catch (err) {
         console.error('[OrderService] Error validating session:', err);
         return [];
@@ -307,16 +326,16 @@ class OrderService {
       // CRITICAL FIX: Set grace period instead of expiring session
       const remainingActiveRes = await db.query(
         `SELECT 1 FROM orders
-         WHERE session_id = $1
-           AND order_status NOT IN ('completed', 'cancelled')
-           AND (payment_status IS NULL OR lower(payment_status) != 'approved')
-         LIMIT 1`,
+          WHERE session_id = $1
+            AND order_status NOT IN ('completed', 'cancelled')
+            AND (payment_status IS NULL OR lower(payment_status) != 'approved')
+          LIMIT 1`,
         [order.session_id]
       );
 
       if (remainingActiveRes.rows.length === 0) {
         try {
-          // Set 10-minute grace period for receipt download
+          // Set grace period for receipt download
           await SessionService.setGracePeriod(order.session_id, 10);
         } catch (err) {
           console.error(`[OrderService] Failed to set grace period: ${order.session_id}`, err);
@@ -365,20 +384,19 @@ class OrderService {
         const client = await db.pool.connect();
         try {
           await client.query('BEGIN');
-          
+
           // Delete order items first (foreign key constraint)
           await client.query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
           console.log(`[OrderService] Deleted order_items for addon order ${orderId}`);
-          
+
           // Delete the order
           await client.query('DELETE FROM orders WHERE order_id = $1', [orderId]);
           console.log(`[OrderService] Deleted addon order ${orderId}`);
           
           await client.query('COMMIT');
-          
-          // Return the original order data (before deletion) for response
+
           return orderToCancel;
-          
+
         } catch (err) {
           await client.query('ROLLBACK');
           throw err;

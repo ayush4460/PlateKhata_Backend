@@ -7,11 +7,11 @@ class SessionService {
     static async getOrCreateSession(tableId) {
         // Check for an active session
         const existingRes = await db.query(
-            `SELECT * FROM sessions 
-                WHERE table_id = $1 
-                AND is_active = TRUE 
+            `SELECT * FROM sessions
+                WHERE table_id = $1
+                AND is_active = TRUE
                 AND (expires_at IS NULL OR expires_at > NOW())
-                ORDER BY created_at DESC 
+                ORDER BY created_at DESC
                 LIMIT 1`,
             [tableId]
         );
@@ -63,19 +63,26 @@ class SessionService {
     }
 
     static async validateSession(token) {
-        const res = await db.query(
-            `SELECT * FROM sessions 
-                WHERE session_token = $1 
-                AND is_active = TRUE 
-                AND (expires_at IS NULL OR expires_at > NOW())`,
+        const { rows } = await db.query(
+            `SELECT * FROM sessions WHERE session_token = $1 LIMIT 1`,
             [token]
         );
-        return res.rows[0] || null;
+        if (rows.length === 0) return null;
+
+        const s = rows[0];
+        const now = new Date();
+
+        if (s.expires_at && new Date(s.expires_at) <= now) {
+            return null;
+        }
+
+        return s;
     }
+
 
     static async updateCustomerDetails(sessionId, name, phone) {
         await db.query(
-            `UPDATE sessions 
+            `UPDATE sessions
             SET customer_name = $1, customer_phone = $2, updated_at = NOW() 
             WHERE session_id = $3`,
             [name, phone, sessionId]
@@ -89,9 +96,9 @@ class SessionService {
 
     static async expireSession(sessionId) {
         await db.query(
-            `UPDATE sessions 
-             SET is_active = FALSE, updated_at = NOW() 
-             WHERE session_id = $1`,
+            `UPDATE sessions
+                SET is_active = FALSE, updated_at = NOW()
+                WHERE session_id = $1`,
             [sessionId]
         );
     }
@@ -112,7 +119,7 @@ class SessionService {
         const expiryTime = new Date(Date.now() + minutes * 60 * 1000);
         await db.query(
             `UPDATE sessions
-                SET expires_at = $1, updated_at = NOW()
+                SET expires_at = $1, is_active = false, updated_at = NOW()
                 WHERE session_id = $2`,
             [expiryTime, sessionId]
         );

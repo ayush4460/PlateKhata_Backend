@@ -52,17 +52,23 @@ class TableService {
     }
 
     static async deleteTable(id) {
-        const table = await TableModel.findById(id);
-        if (!table) {
+    const table = await TableModel.findById(id);
+    if (!table) {
         throw ApiError.notFound('Table not found');
-        }
-
-        if (table.qr_code_url) {
-            await QRCodeService.deleteQRCode(table.qr_code_url);
-        }
-
-        return await TableModel.delete(id);
     }
+
+    await SessionService.clearTable(id);
+
+    if (table.qr_code_url) {
+        await QRCodeService.deleteQRCode(table.qr_code_url);
+    }
+
+    return await TableModel.update(id, {
+        isAvailable: false,
+        qrCodeUrl: null,
+    });
+    }
+
 
     /**
      * Clear session for a table

@@ -38,7 +38,7 @@ class EmailService {
 
     return `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px;">
-        <h2 style="color: #333; text-align: center;">Thank you for your order at MunchMate!</h2>
+        <h2 style="color: #333; text-align: center;">Thank you for your order at Axios!</h2>
         <p>Hi ${order.customer_name || 'Valued Customer'},</p>
         <p>Here is your receipt for <strong>Order #${order.order_number}</strong> placed from <strong>Table ${order.table_id}</strong>.</p>
         
@@ -90,7 +90,7 @@ class EmailService {
     const mailOptions = {
       from: process.env.SMTP_FROM, // Reads SMTP_FROM from .env
       to: order.customer_email,
-      subject: `Your Receipt from MunchMate (Order #${order.order_number})`,
+      subject: `Your Receipt from Axios (Order #${order.order_number})`,
       html: htmlBody,
     };
 

@@ -8,7 +8,7 @@ class QRCodeService {
    */
   static async generateTableQRCode(tableId, tableNumber) {
     try {
-      // Generate URL that customers will scan
+
       const menuUrl = `${config.frontendUrl}/menu?table=${tableId}`;
 
       const dataUrl = await QRCode.toDataURL(menuUrl, {

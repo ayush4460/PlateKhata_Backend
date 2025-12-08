@@ -24,7 +24,7 @@ router.get(
   OrderController.getKitchenOrders
 );
 
-// This route now uses optionalAuth.
+
 // Customers (no token) can access it, but the controller will limit them.
 router.get(
   '/',

@@ -38,7 +38,7 @@ class OrderModel {
 
   while (attempts < maxAttempts) {
     attempts++;
-    
+
     // Generate a new order number for each attempt
     const order_number = await this.generateOrderNumber(client);
     console.log(`[OrderModel] Attempt ${attempts}/${maxAttempts} - Order number: ${order_number}`);
@@ -49,32 +49,31 @@ class OrderModel {
         subtotal, taxAmount, discountAmount, totalAmount, appliedTaxRate,
         specialInstructions, orderStatus, paymentStatus, orderType, order_number, sessionId
       ]);
-      
+
       console.log(`[OrderModel] Order created successfully: ${result.rows[0].order_id}`);
       return result.rows[0];
-      
+
     } catch (error) {
       // Check if it's a duplicate order number constraint violation
       if (error.code === '23505' && error.constraint?.includes('order_number')) {
         console.warn(`[OrderModel] Duplicate order number ${order_number}. Attempt ${attempts}/${maxAttempts}`);
-        
+
         if (attempts >= maxAttempts) {
           throw new Error(`Failed to generate unique order number after ${maxAttempts} attempts.`);
         }
-        
+
         // Add small delay to reduce collision probability
         await new Promise(resolve => setTimeout(resolve, 50 * attempts));
-        
-        // Continue to next iteration to try with a NEW order number
+
         continue;
       }
-      
+
       // For any other error, throw immediately (don't retry)
       console.error('[OrderModel] Order creation failed with error:', error.code, error.message);
       throw error;
     }
   }
-  
+
   throw new Error('Failed to create order after maximum retry attempts.');
 }
 
@@ -117,10 +116,9 @@ class OrderModel {
 
     const orderNumber = `${datePrefix}${String(sequenceNum).padStart(4, '0')}`;
     return orderNumber;
-    
+
   } catch (error) {
     console.error('[OrderModel] Error generating order number:', error);
-    // Fallback: use timestamp-based number to ensure uniqueness
     const timestamp = Date.now().toString().slice(-6);
     return `${datePrefix}${timestamp.slice(-4)}`;
   }
@@ -161,8 +159,8 @@ class OrderModel {
    * Get all orders with filters
    */
   static async findAll(filters = {}) {
-    console.log('[DEBUG MODEL findAll] filters:', filters);
-    
+    //console.log('[DEBUG MODEL findAll] filters:', filters);
+
     let query = `
       SELECT o.*, o.payment_method, t.table_number,
         json_agg(
@@ -190,14 +188,14 @@ class OrderModel {
     if (filters.sessionId) {
       query += ` AND o.session_id = $${paramCount++}`;
       params.push(filters.sessionId);
-      console.log('[DEBUG MODEL findAll] Added sessionId filter:', filters.sessionId);
+      //console.log('[DEBUG MODEL findAll] Added sessionId filter:', filters.sessionId);
     }
 
     // Filter by table_id (secondary filter)
     if (filters.tableId) {
       query += ` AND o.table_id = $${paramCount++}`;
       params.push(filters.tableId);
-      console.log('[DEBUG MODEL findAll] Added tableId filter:', filters.tableId);
+      //console.log('[DEBUG MODEL findAll] Added tableId filter:', filters.tableId);
     }
 
     // Status handling: accepts array or single value
@@ -207,12 +205,12 @@ class OrderModel {
         query += ` AND LOWER(o.order_status) = ANY($${paramCount}::varchar[])`;
         params.push(lowered);
         paramCount++;
-        console.log('[DEBUG MODEL findAll] Added status array filter:', lowered);
+        //console.log('[DEBUG MODEL findAll] Added status array filter:', lowered);
       } else {
         query += ` AND LOWER(o.order_status) = $${paramCount}`;
         params.push(String(filters.status).toLowerCase());
         paramCount++;
-        console.log('[DEBUG MODEL findAll] Added single status filter:', filters.status);
+        //console.log('[DEBUG MODEL findAll] Added single status filter:', filters.status);
       }
     }
 
@@ -220,7 +218,7 @@ class OrderModel {
     if (filters.date) {
       query += ` AND DATE(o.created_at) = $${paramCount++}`;
       params.push(filters.date);
-      console.log('[DEBUG MODEL findAll] Added date filter:', filters.date);
+      //console.log('[DEBUG MODEL findAll] Added date filter:', filters.date);
     }
 
     query += ' GROUP BY o.order_id, t.table_number ORDER BY o.created_at DESC';
@@ -230,10 +228,10 @@ class OrderModel {
     query += ` LIMIT $${paramCount++}`;
     params.push(limit);
 
-    console.log('[DEBUG MODEL findAll] Final query params:', params);
+    //console.log('[DEBUG MODEL findAll] Final query params:', params);
 
     const result = await db.query(query, params);
-    console.log('[DEBUG MODEL findAll] Result count:', result.rows.length);
+    //console.log('[DEBUG MODEL findAll] Result count:', result.rows.length);
     
     return result.rows;
   }
@@ -356,13 +354,21 @@ class OrderModel {
    */
   static async cancel(orderId) {
     const query = `
-      UPDATE orders 
+      UPDATE orders
       SET order_status = 'cancelled', updated_at = CURRENT_TIMESTAMP
       WHERE order_id = $1 AND order_status IN ('pending', 'confirmed')
       RETURNING *
     `;
     const result = await db.query(query, [orderId]);
     return result.rows[0];
+  }
+
+  /**
+   * Delete orders by table ID (used when deleting a table)
+   */
+  static async deleteByTableId(tableId) {
+    const query = 'DELETE FROM orders WHERE table_id = $1';
+    await db.query(query, [tableId]);
   }
 }
 
