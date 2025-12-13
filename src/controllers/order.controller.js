@@ -28,6 +28,11 @@ class OrderController {
       const returnedOrder = result && result.order ? result.order : null;
       const sessionToken = result && result.session_token ? result.session_token : null;
 
+      // Emit new user order to kitchen
+      if (returnedOrder) {
+        socketService.emitNewOrder(returnedOrder);
+      }
+
       const responsePayload = {
         order: returnedOrder,
         session_token: sessionToken
