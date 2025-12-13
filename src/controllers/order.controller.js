@@ -79,7 +79,7 @@ static getAllOrders = catchAsync(async (req, res) => {
 
   // PUBLIC/CUSTOMER ACCESS: Requires both tableId AND session token
   if (!tableId) {
-    console.warn('[CTRL getAllOrders] Public request missing tableId');
+    console.warn(`[CTRL getAllOrders] Public request missing tableId. Query: ${JSON.stringify(req.query)}`);
     return ApiResponse.success(res, []);
   }
   

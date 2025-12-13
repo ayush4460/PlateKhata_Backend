@@ -216,10 +216,14 @@ class OrderService {
           return [];
         }
 
-        // Verify table match
+        // Verify table match (Allow either ID or Table Number)
         if (f.tableId && String(session.table_id) !== String(f.tableId)) {
-          console.warn('[OrderService] Session does not match table');
-          return [];
+          // If ID doesn't match, check if it matches the table_number (e.g. "G1")
+          const table = await TableModel.findById(session.table_id);
+          if (!table || String(table.table_number) !== String(f.tableId)) {
+             console.warn(`[OrderService] Session table mismatch. Session ID: ${session.table_id}, Request: ${f.tableId}`);
+             return [];
+          }
         }
 
         // Check if session is active
@@ -231,7 +235,12 @@ class OrderService {
 
         // Query orders for this session
         f.sessionId = session.session_id;
+        console.log(`[OrderService] Resolved session for token. ID: ${session.session_id}, TableID: ${session.table_id}`);
+        
         delete f.sessionToken;
+        // CRITICAL: Remove tableId filter because it might be a string (e.g. "G1") while DB expects INT
+        // The sessionId is sufficient for isolation.
+        delete f.tableId;
 
         //  Show all orders EXCEPT cancelled
 
