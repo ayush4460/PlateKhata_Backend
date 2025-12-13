@@ -6,20 +6,20 @@ class SettingsService {
     /**
    * Updates a setting in the database (e.g., 'tax_rate').
    */
-    static async updateSetting(key, value) {
+    static async updateSetting(restaurantId, key, value) {
         const query = `
-            INSERT INTO settings (setting_key, setting_value, updated_at)
-            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            INSERT INTO settings (restaurant_id, setting_key, setting_value, updated_at)
+            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
             ON CONFLICT (setting_key) DO UPDATE SET
             setting_value = EXCLUDED.setting_value,
             updated_at = CURRENT_TIMESTAMP;
         `;
         try {
-            await db.query(query, [key, String(value)]); // Store value as text/varchar
-            console.log(`[SettingsService] Setting updated: ${key} = ${value}`);
+            await db.query(query, [restaurantId, key, String(value)]); // Store value as text/varchar
+            console.log(`[SettingsService] Setting updated: ${key} = ${value} (Rest: ${restaurantId})`);
         } catch (error) {
             console.error(`[SettingsService] Failed to update setting ${key}:`, error);
-            throw ApiError.internalError('Failed to update setting.');
+            throw ApiError.internal('Failed to update setting.');
         }
     }
 

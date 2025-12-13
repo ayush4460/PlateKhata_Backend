@@ -6,17 +6,22 @@ const catchAsync = require('../utils/catchAsync');
 class SettingsController {
   static updateSettings = catchAsync(async (req, res) => {
     const { taxRate, discountRate, upiId } = req.body;
+    const { restaurantId } = req.user;
+
+    if (!restaurantId) {
+        throw new Error('User does not have a restaurantId');
+    }
 
     if (taxRate !== undefined) {
-        await SettingsService.updateSetting('tax_rate', taxRate);
+        await SettingsService.updateSetting(restaurantId, 'tax_rate', taxRate);
     }
 
     if (discountRate !== undefined) {
-        await SettingsService.updateSetting('discount_rate', discountRate);
+        await SettingsService.updateSetting(restaurantId, 'discount_rate', discountRate);
     }
 
     if (upiId !== undefined) {
-      await SettingsService.updateSetting('upi_id', upiId);
+      await SettingsService.updateSetting(restaurantId, 'upi_id', upiId);
     }
 
     return ApiResponse.success(res, { taxRate, discountRate, upiId }, 'Settings updated successfully.');
