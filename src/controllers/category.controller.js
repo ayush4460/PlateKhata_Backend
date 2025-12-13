@@ -29,7 +29,7 @@ class CategoryController {
 
   static async create(req, res) {
     try {
-      const { name, displayOrder } = req.body;
+      const { name, displayOrder, display_order } = req.body;
       const restaurantId = req.user?.restaurantId;
 
       if (!restaurantId) {
@@ -39,7 +39,14 @@ class CategoryController {
         return ApiResponse.error(res, 'Name is required', 400);
       }
 
-      const category = await CategoryModel.create({ restaurantId, name, displayOrder });
+      // Use displayOrder or display_order (frontend sends snake_case)
+      const finalOrder = displayOrder !== undefined ? displayOrder : display_order;
+
+      const category = await CategoryModel.create({ 
+          restaurantId, 
+          name, 
+          displayOrder: finalOrder 
+      });
       return ApiResponse.success(res, category, 201);
     } catch (error) {
         if (error.code === '23505') { // Unique violation
@@ -53,7 +60,12 @@ class CategoryController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const updates = req.body;
+      const updates = { ...req.body };
+      
+      // Map display_order to displayOrder for Model
+      if (updates.display_order !== undefined) {
+          updates.displayOrder = updates.display_order;
+      }
       
       const category = await CategoryModel.update(id, updates);
       if (!category) {
