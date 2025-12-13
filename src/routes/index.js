@@ -32,5 +32,6 @@ router.use('/orders', orderRoutes);
 router.use('/tables', tableRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/uploads', uploadRoutes);
+router.use('/public', require('./public.routes'));
 
 module.exports = router;

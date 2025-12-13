@@ -8,9 +8,9 @@ class UserModel {
     const { username, email, passwordHash, fullName, role } = userData;
 
     const query = `
-      INSERT INTO users (username, email, password_hash, full_name, role)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING user_id, username, email, full_name, role, created_at
+      INSERT INTO users (username, email, password_hash, full_name, role, restaurant_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING user_id, username, email, full_name, role, restaurant_id, created_at
     `;
 
     const result = await db.query(query, [
@@ -19,6 +19,7 @@ class UserModel {
       passwordHash,
       fullName,
       role || 'waiter',
+      userData.restaurantId || null,
     ]);
 
     return result.rows[0];
@@ -29,7 +30,7 @@ class UserModel {
    */
   static async findByEmail(email) {
     const query = `
-      SELECT user_id, username, email, password_hash, full_name, role, is_active, created_at
+      SELECT user_id, username, email, password_hash, full_name, role, restaurant_id, is_active, created_at
       FROM users
       WHERE email = $1
     `;
@@ -43,7 +44,7 @@ class UserModel {
    */
   static async findById(userId) {
     const query = `
-      SELECT user_id, username, email, full_name, role, is_active, created_at
+      SELECT user_id, username, email, full_name, role, restaurant_id, is_active, created_at
       FROM users
       WHERE user_id = $1
     `;
@@ -57,7 +58,7 @@ class UserModel {
    */
   static async findByUsername(username) {
     const query = `
-      SELECT user_id, username, email, full_name, role, is_active
+      SELECT user_id, username, email, full_name, role, restaurant_id, is_active
       FROM users
       WHERE username = $1
     `;
@@ -70,7 +71,7 @@ class UserModel {
    * Get all users
    */
   static async findAll(filters = {}) {
-    let query = 'SELECT user_id, username, email, full_name, role, is_active, created_at FROM users WHERE 1=1';
+    let query = 'SELECT user_id, username, email, full_name, role, restaurant_id, is_active, created_at FROM users WHERE 1=1';
     const params = [];
     let paramCount = 1;
 
@@ -83,6 +84,12 @@ class UserModel {
     if (filters.isActive !== undefined) {
       query += ` AND is_active = $${paramCount}`;
       params.push(filters.isActive);
+      paramCount++;
+    }
+
+    if (filters.restaurantId) {
+      query += ` AND restaurant_id = $${paramCount}`;
+      params.push(filters.restaurantId);
       paramCount++;
     }
 

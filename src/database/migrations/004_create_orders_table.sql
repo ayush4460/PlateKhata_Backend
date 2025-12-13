@@ -5,6 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS orders (
     order_id SERIAL PRIMARY KEY,
+    restaurant_id INTEGER NOT NULL REFERENCES restaurants(restaurant_id) ON DELETE CASCADE,
     table_id INTEGER NOT NULL REFERENCES tables(table_id) ON DELETE RESTRICT,
     order_number VARCHAR(50) UNIQUE NOT NULL,
     customer_name VARCHAR(100),

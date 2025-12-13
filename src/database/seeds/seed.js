@@ -1,8 +1,8 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const db = require('../config/database');
-const Encryption = require('../utils/encryption');
+const db = require('../../config/database');
+const Encryption = require('../../utils/encryption');
 
 const seedsDir = path.join(__dirname, 'seeds');
 

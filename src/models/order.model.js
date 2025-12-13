@@ -20,16 +20,18 @@ class OrderModel {
     paymentStatus = 'Pending',
     discountAmount = 0,
     orderType = 'regular',
-    sessionId
+
+    sessionId,
+    restaurantId
   } = orderData;
 
   const query = `
     INSERT INTO orders (
         table_id, customer_name, customer_phone, customer_email,
         subtotal, tax_amount, discount_amount, total_amount, applied_tax_rate,
-        special_instructions, order_status, payment_status, order_type, order_number, session_id
+        special_instructions, order_status, payment_status, order_type, order_number, session_id, restaurant_id
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
     RETURNING *
   `;
 
@@ -47,7 +49,7 @@ class OrderModel {
       const result = await client.query(query, [
         tableId, customerName, customerPhone, null,
         subtotal, taxAmount, discountAmount, totalAmount, appliedTaxRate,
-        specialInstructions, orderStatus, paymentStatus, orderType, order_number, sessionId
+        specialInstructions, orderStatus, paymentStatus, orderType, order_number, sessionId, restaurantId
       ]);
 
       console.log(`[OrderModel] Order created successfully: ${result.rows[0].order_id}`);
@@ -221,6 +223,12 @@ class OrderModel {
       //console.log('[DEBUG MODEL findAll] Added date filter:', filters.date);
     }
 
+    // Restaurant filter
+    if (filters.restaurantId) {
+      query += ` AND o.restaurant_id = $${paramCount++}`;
+      params.push(filters.restaurantId);
+    }
+
     query += ' GROUP BY o.order_id, t.table_number ORDER BY o.created_at DESC';
 
     // Limit
@@ -325,7 +333,10 @@ class OrderModel {
   /**
    * Get kitchen orders (active orders only)
    */
-  static async getKitchenOrders() {
+   /**
+   * Get kitchen orders (active orders only)
+   */
+  static async getKitchenOrders(restaurantId) {
     const query = `
       SELECT o.*, t.table_number,
         json_agg(
@@ -341,11 +352,11 @@ class OrderModel {
       FROM orders o
       LEFT JOIN tables t ON o.table_id = t.table_id
       LEFT JOIN order_items oi ON o.order_id = oi.order_id
-      WHERE o.order_status IN ('pending', 'confirmed', 'preparing', 'ready')
+      WHERE o.order_status IN ('pending', 'confirmed', 'preparing', 'ready') AND o.restaurant_id = $1
       GROUP BY o.order_id, t.table_number
       ORDER BY o.created_at ASC
     `;
-    const result = await db.query(query);
+    const result = await db.query(query, [restaurantId]);
     return result.rows;
   }
 

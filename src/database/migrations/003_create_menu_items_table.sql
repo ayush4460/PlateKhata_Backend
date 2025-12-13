@@ -5,6 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS menu_items (
     item_id SERIAL PRIMARY KEY,
+    restaurant_id INTEGER NOT NULL REFERENCES restaurants(restaurant_id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL,

@@ -14,6 +14,7 @@ class MenuController {
       ...req.body,
       // Use Cloudinary URL if file uploaded, otherwise null
       imageUrl: req.file ? req.file.path : null,
+      restaurantId: req.user.restaurantId,
     };
 
     const item = await MenuService.createItem(itemData);
@@ -32,6 +33,13 @@ class MenuController {
     if (isAvailable !== undefined) filters.isAvailable = isAvailable === 'true';
     if (isVegetarian !== undefined)
       filters.isVegetarian = isVegetarian === 'true';
+
+    // Multi-tenancy
+    if (req.user && req.user.restaurantId) {
+      filters.restaurantId = req.user.restaurantId;
+    } else if (req.query.restaurantId) {
+      filters.restaurantId = req.query.restaurantId;
+    }
 
     const items = await MenuService.getAllItems(filters);
     return ApiResponse.success(res, items);
@@ -109,7 +117,14 @@ class MenuController {
    * GET /api/v1/menu/category/:category
    */
   static getItemsByCategory = catchAsync(async (req, res) => {
-    const items = await MenuService.getItemsByCategory(req.params.category);
+    let restaurantId = req.user ? req.user.restaurantId : req.query.restaurantId;
+    
+    // Fallback if not provided (should probably be required)
+    if (!restaurantId) {
+        return ApiResponse.badRequest(res, 'Restaurant ID required');
+    }
+
+    const items = await MenuService.getItemsByCategory(req.params.category, restaurantId);
     return ApiResponse.success(res, items);
   });
 
@@ -118,7 +133,13 @@ class MenuController {
    * GET /api/v1/menu/categories
    */
   static getCategories = catchAsync(async (req, res) => {
-    const categories = await MenuService.getCategories();
+    let restaurantId = req.user ? req.user.restaurantId : req.query.restaurantId;
+        
+    if (!restaurantId) {
+        return ApiResponse.badRequest(res, 'Restaurant ID required');
+    }
+
+    const categories = await MenuService.getCategories(restaurantId);
     return ApiResponse.success(res, categories);
   });
 

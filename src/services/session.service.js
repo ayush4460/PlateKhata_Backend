@@ -83,7 +83,7 @@ class SessionService {
     static async updateCustomerDetails(sessionId, name, phone) {
         await db.query(
             `UPDATE sessions
-            SET customer_name = $1, customer_phone = $2, updated_at = NOW() 
+            SET customer_name = $1, customer_phone = $2 
             WHERE session_id = $3`,
             [name, phone, sessionId]
         );
@@ -97,7 +97,7 @@ class SessionService {
     static async expireSession(sessionId) {
         await db.query(
             `UPDATE sessions
-                SET is_active = FALSE, updated_at = NOW()
+                SET is_active = FALSE
                 WHERE session_id = $1`,
             [sessionId]
         );
@@ -106,7 +106,7 @@ class SessionService {
     static async clearTable(tableId) {
         await db.query(
             `UPDATE sessions 
-             SET is_active = FALSE, updated_at = NOW() 
+             SET is_active = FALSE 
              WHERE table_id = $1`,
             [tableId]
         );
@@ -119,7 +119,7 @@ class SessionService {
         const expiryTime = new Date(Date.now() + minutes * 60 * 1000);
         await db.query(
             `UPDATE sessions
-                SET expires_at = $1, is_active = false, updated_at = NOW()
+                SET expires_at = $1, is_active = false
                 WHERE session_id = $2`,
             [expiryTime, sessionId]
         );

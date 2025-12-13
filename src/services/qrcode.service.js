@@ -1,4 +1,5 @@
 const QRCode = require('qrcode');
+const jwt = require('jsonwebtoken');
 const { cloudinary, extractPublicId } = require('../config/cloudinary');
 const config = require('../config/env');
 
@@ -6,10 +7,19 @@ class QRCodeService {
   /**
    * Generate QR code for table
    */
-  static async generateTableQRCode(tableId, tableNumber) {
+  static async generateTableQRCode(tableId, tableNumber, restaurantSlug, restaurantId) {
     try {
 
-      const menuUrl = `${config.frontendUrl}/menu?table=${tableId}`;
+      // Generate Secure Token
+      // Payload: { t: tableId, r: restaurantId }
+      const token = jwt.sign(
+        { t: tableId, r: restaurantId }, 
+        process.env.JWT_SECRET,
+        { expiresIn: '1825d' } // 5 years
+      );
+
+      // New Format: /{slug}?token={secureToken}
+      const menuUrl = `${config.frontendUrl}/${restaurantSlug}?token=${token}`;
 
       const dataUrl = await QRCode.toDataURL(menuUrl, {
         width: 300,

@@ -66,6 +66,7 @@ static getAllOrders = catchAsync(async (req, res) => {
     if (date) filters.date = date;
     filters.limit = limit;
     filters.includeAllForStaff = true;
+    filters.restaurantId = user.restaurantId;
 
     const orders = await OrderService.getAllOrders(filters);
     return ApiResponse.success(res, orders);
@@ -178,7 +179,7 @@ static getAllOrders = catchAsync(async (req, res) => {
    * GET /api/v1/orders/kitchen/active
    */
   static getKitchenOrders = catchAsync(async (req, res) => {
-    const orders = await OrderService.getKitchenOrders();
+    const orders = await OrderService.getKitchenOrders(req.user.restaurantId);
     return ApiResponse.success(res, orders);
   });
 

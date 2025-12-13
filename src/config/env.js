@@ -56,7 +56,7 @@ const config = {
   },
 
   // Frontend
-  frontendUrl: process.env.FRONTEND_URL,
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:9002',
 };
 
 // Validate required environment variables

@@ -60,15 +60,15 @@ static async deleteItem(itemId) {
   /**
    * Get items by category
    */
-  static async getItemsByCategory(category) {
-    return await MenuModel.findByCategory(category);
+  static async getItemsByCategory(category, restaurantId) {
+    return await MenuModel.findByCategory(category, restaurantId);
   }
 
   /**
    * Get all categories
    */
-  static async getCategories() {
-    return await MenuModel.getCategories();
+  static async getCategories(restaurantId) {
+    return await MenuModel.getCategories(restaurantId);
   }
 
   /**

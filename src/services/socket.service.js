@@ -17,19 +17,47 @@ class SocketService {
       },
     });
 
-    this.io.on('connection', (socket) => {
-      console.log('Client connected:', socket.id);
+    // Middleware for authentication
+    this.io.use((socket, next) => {
+      const token = socket.handshake.auth.token;
 
-      // Join kitchen room
+      if (!token) {
+        // Allow anonymous connection for customers (table specific), but mark as guest
+        socket.user = { role: 'guest' };
+        return next();
+      }
+
+      try {
+        const JWTUtils = require('../utils/jwt');
+        const decoded = JWTUtils.verifyAccessToken(token);
+        socket.user = decoded;
+        next();
+      } catch (err) {
+        // Invalid token - fail connection or treat as guest?
+        // Better to fail if token was attempted but invalid.
+        next(new Error("Authentication error"));
+      }
+    });
+
+    this.io.on('connection', (socket) => {
+      console.log('Client connected:', socket.id, 'Role:', socket.user?.role || 'guest');
+
+      // Join kitchen room - RESTRICTED
       socket.on('join:kitchen', () => {
+        if (!socket.user || (socket.user.role !== 'admin' && socket.user.role !== 'kitchen')) {
+          console.warn('Unauthorized attempt to join kitchen:', socket.id);
+          return; // Silently ignore or emit error
+        }
         socket.join('kitchen');
         console.log('Kitchen staff joined:', socket.id);
       });
 
       // Join table room
       socket.on('join:table', (tableId) => {
+        // Optional: Verify if user belongs to this table?
+        // For now, allow open table joining as customers scan QR.
         socket.join(`table:${tableId}`);
-        console.log(`Customer joined table ${tableId}:`, socket.id);
+        console.log(`Client joined table ${tableId}:`, socket.id);
       });
 
       // Disconnect

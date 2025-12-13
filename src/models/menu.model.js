@@ -13,11 +13,12 @@ class MenuModel {
       imageUrl,
       isVegetarian,
       preparationTime,
+      restaurantId,
     } = itemData;
 
     const query = `
-      INSERT INTO menu_items (name, description, category, price, image_url, is_vegetarian, preparation_time)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO menu_items (name, description, category, price, image_url, is_vegetarian, preparation_time, restaurant_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
 
@@ -29,6 +30,7 @@ class MenuModel {
       imageUrl,
       isVegetarian || false,
       preparationTime,
+      restaurantId,
     ]);
 
     return result.rows[0];
@@ -41,6 +43,12 @@ class MenuModel {
     let query = 'SELECT * FROM menu_items WHERE 1=1';
     const params = [];
     let paramCount = 1;
+
+    if (filters.restaurantId) {
+        query += ` AND restaurant_id = $${paramCount}`;
+        params.push(filters.restaurantId);
+        paramCount++;
+    }
 
     if (filters.category) {
       query += ` AND category = $${paramCount}`;
@@ -153,28 +161,34 @@ class MenuModel {
   /**
    * Get menu items by category
    */
-  static async findByCategory(category) {
+   /**
+   * Get menu items by category and restaurant
+   */
+  static async findByCategory(category, restaurantId) {
     const query = `
       SELECT * FROM menu_items
-      WHERE category = $1 AND is_available = true
+      WHERE category = $1 AND is_available = true AND restaurant_id = $2
       ORDER BY name
     `;
-    const result = await db.query(query, [category]);
+    const result = await db.query(query, [category, restaurantId]);
     return result.rows;
   }
 
   /**
    * Get all categories with item count
    */
-  static async getCategories() {
+   /**
+   * Get all categories with item count for a restaurant
+   */
+  static async getCategories(restaurantId) {
     const query = `
       SELECT category, COUNT(*) as item_count
       FROM menu_items
-      WHERE is_available = true
+      WHERE is_available = true AND restaurant_id = $1
       GROUP BY category
       ORDER BY category
     `;
-    const result = await db.query(query);
+    const result = await db.query(query, [restaurantId]);
     return result.rows;
   }
 }

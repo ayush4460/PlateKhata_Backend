@@ -21,11 +21,11 @@ uploads/menu/*
 public/qrcodes/*
 !public/qrcodes/.gitkeep
 
-# Tests
-tests/unit/*
-!tests/unit/.gitkeep
-tests/integration/*
-!tests/integration/.gitkeep
+# Tests - allow all
+# tests/unit/*
+# !tests/unit/.gitkeep
+# tests/integration/*
+# !tests/integration/.gitkeep
 
 # Testing
 coverage/

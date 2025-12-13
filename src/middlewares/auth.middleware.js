@@ -24,6 +24,7 @@ exports.authenticate = catchAsync(async (req, res, next) => {
       userId: decoded.userId,
       email: decoded.email,
       role: decoded.role,
+      restaurantId: decoded.restaurantId,
     };
 
     next();
@@ -47,6 +48,7 @@ exports.optionalAuth = catchAsync(async (req, res, next) => {
         userId: decoded.userId,
         email: decoded.email,
         role: decoded.role,
+        restaurantId: decoded.restaurantId,
       };
     } catch (error) {
       // Continue without authentication

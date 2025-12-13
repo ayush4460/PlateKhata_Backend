@@ -5,7 +5,8 @@
 
 CREATE TABLE IF NOT EXISTS tables (
     table_id SERIAL PRIMARY KEY,
-    table_number VARCHAR(10) UNIQUE NOT NULL,
+    restaurant_id INTEGER NOT NULL REFERENCES restaurants(restaurant_id) ON DELETE CASCADE,
+    table_number VARCHAR(10) NOT NULL,
     qr_code_url VARCHAR(255),
     capacity INTEGER NOT NULL,
     floor_number INTEGER DEFAULT 1,

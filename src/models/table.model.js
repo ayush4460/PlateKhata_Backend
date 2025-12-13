@@ -5,24 +5,27 @@ class TableModel {
    * Create table
    */
   static async create(tableData) {
-    const { tableNumber, capacity, qrCodeUrl } = tableData;
+    const { tableNumber, capacity, qrCodeUrl, restaurantId } = tableData;
 
     const query = `
-      INSERT INTO tables (table_number, capacity, qr_code_url)
-      VALUES ($1, $2, $3)
+      INSERT INTO tables (table_number, capacity, qr_code_url, restaurant_id)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
 
-    const result = await db.query(query, [tableNumber, capacity, qrCodeUrl]);
+    const result = await db.query(query, [tableNumber, capacity, qrCodeUrl, restaurantId]);
     return result.rows[0];
   }
 
   /**
    * Get all tables
    */
-  static async findAll() {
-    const query = 'SELECT * FROM tables ORDER BY table_number';
-    const result = await db.query(query);
+   /**
+   * Get all tables for a restaurant
+   */
+  static async findAll(restaurantId) {
+    const query = 'SELECT * FROM tables WHERE restaurant_id = $1 ORDER BY table_number';
+    const result = await db.query(query, [restaurantId]);
     return result.rows;
   }
 
@@ -38,9 +41,12 @@ class TableModel {
   /**
    * Get table by number
    */
-  static async findByNumber(tableNumber) {
-    const query = 'SELECT * FROM tables WHERE table_number = $1';
-    const result = await db.query(query, [tableNumber]);
+   /**
+   * Get table by number and restaurant
+   */
+  static async findByNumber(tableNumber, restaurantId) {
+    const query = 'SELECT * FROM tables WHERE table_number = $1 AND restaurant_id = $2';
+    const result = await db.query(query, [tableNumber, restaurantId]);
     return result.rows[0];
   }
 
@@ -102,9 +108,12 @@ class TableModel {
   /**
    * Get available tables
    */
-  static async getAvailableTables() {
-    const query = 'SELECT * FROM tables WHERE is_available = true ORDER BY table_number';
-    const result = await db.query(query);
+   /**
+   * Get available tables for a restaurant
+   */
+  static async getAvailableTables(restaurantId) {
+    const query = 'SELECT * FROM tables WHERE is_available = true AND restaurant_id = $1 ORDER BY table_number';
+    const result = await db.query(query, [restaurantId]);
     return result.rows;
   }
 }

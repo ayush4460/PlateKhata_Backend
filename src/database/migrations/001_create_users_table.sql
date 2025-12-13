@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'kitchen', 'waiter')),
     is_active BOOLEAN DEFAULT TRUE,
+    restaurant_id INTEGER REFERENCES restaurants(restaurant_id) ON DELETE SET NULL,
     failed_login_attempts INTEGER DEFAULT 0,
     last_login_at TIMESTAMP,
     password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -27,6 +28,7 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_active ON users(is_active);
+CREATE INDEX idx_users_restaurant_id ON users(restaurant_id);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -45,13 +47,14 @@ CREATE TRIGGER update_users_updated_at
 
 -- Insert default admin user (password will be hashed by seed script)
 -- Default password: Admin@123 (change immediately after first login)
-INSERT INTO users (username, email, password_hash, full_name, role) 
+INSERT INTO users (username, email, password_hash, full_name, role, restaurant_id) 
 VALUES (
     'admin', 
     'admin@restaurant.com', 
     '$2a$10$placeholder_hash_will_be_replaced_by_seed_script',
     'System Administrator', 
-    'admin'
+    'admin',
+    NULL
 ) ON CONFLICT (username) DO NOTHING;
 
 -- Add comment

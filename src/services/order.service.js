@@ -135,7 +135,8 @@ class OrderService {
         orderStatus: 'pending',
         paymentStatus: 'Pending',
         orderType: orderType || 'regular',
-        sessionId: session.session_id
+        sessionId: session.session_id,
+        restaurantId: table.restaurant_id
       }, client);
 
       console.log('[OrderService] Order created:', order.order_id);
@@ -356,8 +357,8 @@ class OrderService {
   /**
    * Get kitchen orders
    */
-  static async getKitchenOrders() {
-    return await OrderModel.getKitchenOrders();
+  static async getKitchenOrders(restaurantId) {
+    return await OrderModel.getKitchenOrders(restaurantId);
   }
 
   /**

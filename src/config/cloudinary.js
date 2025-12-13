@@ -18,10 +18,12 @@ console.log('📋 Cloudinary Config:', {
   api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing',
 });
 
-// Test connection
-cloudinary.api.ping()
-  .then(() => console.log('✅ Cloudinary connected successfully'))
-  .catch(err => console.error('❌ Cloudinary connection error:', err.message));
+// Test connection (Skip in test environment)
+if (process.env.NODE_ENV !== 'test') {
+  cloudinary.api.ping()
+    .then(() => console.log('✅ Cloudinary connected successfully'))
+    .catch(err => console.error('❌ Cloudinary connection error:', err.message));
+}
 
 // Storage for Menu Items
 const menuStorage = new CloudinaryStorage({

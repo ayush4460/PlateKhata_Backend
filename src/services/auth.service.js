@@ -8,7 +8,7 @@ class AuthService {
    * Register new user
    */
   static async register(userData) {
-    const { username, email, password, fullName, role } = userData;
+    const { username, email, password, fullName, role, restaurantId } = userData;
 
     // Check if user exists
     const existingUser = await UserModel.findByEmail(email);
@@ -31,6 +31,7 @@ class AuthService {
       passwordHash,
       fullName,
       role,
+      restaurantId,
     });
 
     // Generate tokens
@@ -38,6 +39,7 @@ class AuthService {
       userId: user.user_id,
       email: user.email,
       role: user.role,
+      restaurantId: user.restaurant_id,
     });
 
     return {
@@ -47,6 +49,7 @@ class AuthService {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        restaurantId: user.restaurant_id,
       },
       ...tokens,
     };
@@ -80,6 +83,7 @@ class AuthService {
       userId: user.user_id,
       email: user.email,
       role: user.role,
+      restaurantId: user.restaurant_id,
     });
 
     return {
@@ -89,6 +93,7 @@ class AuthService {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        restaurantId: user.restaurant_id,
       },
       ...tokens,
     };
@@ -106,6 +111,7 @@ class AuthService {
         userId: decoded.userId,
         email: decoded.email,
         role: decoded.role,
+        restaurantId: decoded.restaurantId,
       });
 
       return { accessToken };
@@ -129,6 +135,7 @@ class AuthService {
       email: user.email,
       fullName: user.full_name,
       role: user.role,
+      restaurantId: user.restaurant_id,
       isActive: user.is_active,
       createdAt: user.created_at,
     };
