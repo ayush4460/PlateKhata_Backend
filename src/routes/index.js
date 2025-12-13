@@ -4,6 +4,7 @@ const router = express.Router();
 // Import route modules
 const authRoutes = require('./auth.routes');
 const menuRoutes = require('./menu.routes');
+const categoryRoutes = require('./category.routes');
 const orderRoutes = require('./order.routes');
 const tableRoutes = require('./table.routes');
 const settingsRoutes = require('./settings.routes');
@@ -19,6 +20,7 @@ router.get('/', (req, res) => {
     endpoints: {
       auth: `/api/${process.env.API_VERSION}/auth`,
       menu: `/api/${process.env.API_VERSION}/menu`,
+      categories: `/api/${process.env.API_VERSION}/categories`, // Added
       orders: `/api/${process.env.API_VERSION}/orders`,
       tables: `/api/${process.env.API_VERSION}/tables`,
     },
@@ -28,6 +30,7 @@ router.get('/', (req, res) => {
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/menu', menuRoutes);
+router.use('/categories', categoryRoutes); // Added
 router.use('/orders', orderRoutes);
 router.use('/tables', tableRoutes);
 router.use('/settings', settingsRoutes);

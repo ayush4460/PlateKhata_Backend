@@ -12,9 +12,9 @@ exports.createMenuItemValidator = [
     .isLength({ max: 500 })
     .withMessage('Description must not exceed 500 characters'),
 
-  body('category')
-    .isIn(['Beverages', 'Starters', 'Main Course', 'Desserts', 'Breads', 'Specials','Salads','Soups','Appetizers'])
-    .withMessage('Invalid category'),
+  body('categoryId')
+    .isInt()
+    .withMessage('Valid Category ID is required'),
 
   body('price')
     .isFloat({ min: 0.01 })
@@ -46,10 +46,10 @@ exports.updateMenuItemValidator = [
     .isLength({ max: 500 })
     .withMessage('Description must not exceed 500 characters'),
 
-  body('category')
+  body('categoryId')
     .optional()
-    .isIn(['Beverages', 'Starters', 'Main Course', 'Desserts', 'Breads', 'Specials'])
-    .withMessage('Invalid category'),
+    .isInt()
+    .withMessage('Category ID must be an integer'),
 
   body('price')
     .optional()

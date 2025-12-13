@@ -8,7 +8,7 @@ class MenuModel {
     const {
       name,
       description,
-      category,
+      categoryId, // Changed from category
       price,
       imageUrl,
       isVegetarian,
@@ -17,7 +17,7 @@ class MenuModel {
     } = itemData;
 
     const query = `
-      INSERT INTO menu_items (name, description, category, price, image_url, is_vegetarian, preparation_time, restaurant_id)
+      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, preparation_time, restaurant_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
@@ -25,7 +25,7 @@ class MenuModel {
     const result = await db.query(query, [
       name,
       description,
-      category,
+      categoryId,
       price,
       imageUrl,
       isVegetarian || false,
@@ -40,38 +40,52 @@ class MenuModel {
    * Get all menu items
    */
   static async findAll(filters = {}) {
-    let query = 'SELECT * FROM menu_items WHERE 1=1';
+    // JOIN categories to get category_name for frontend compatibility
+    let query = `
+        SELECT m.*, c.name as category_name, c.display_order 
+        FROM menu_items m
+        LEFT JOIN categories c ON m.category_id = c.category_id
+        WHERE 1=1
+    `;
     const params = [];
     let paramCount = 1;
 
     if (filters.restaurantId) {
-        query += ` AND restaurant_id = $${paramCount}`;
+        query += ` AND m.restaurant_id = $${paramCount}`;
         params.push(filters.restaurantId);
         paramCount++;
     }
 
-    if (filters.category) {
-      query += ` AND category = $${paramCount}`;
-      params.push(filters.category);
+    // Support filtering by ID or Name (for backward compatibility if needed)
+    if (filters.categoryId) {
+      query += ` AND m.category_id = $${paramCount}`;
+      params.push(filters.categoryId);
       paramCount++;
     }
 
     if (filters.isAvailable !== undefined) {
-      query += ` AND is_available = $${paramCount}`;
+      query += ` AND m.is_available = $${paramCount}`;
       params.push(filters.isAvailable);
       paramCount++;
     }
 
     if (filters.isVegetarian !== undefined) {
-      query += ` AND is_vegetarian = $${paramCount}`;
+      query += ` AND m.is_vegetarian = $${paramCount}`;
       params.push(filters.isVegetarian);
       paramCount++;
     }
 
-    query += ' ORDER BY category, name';
+    // Sort by Display Order (Category) -> Category Name -> Item Name
+    query += ' ORDER BY c.display_order ASC, c.name ASC, m.name ASC';
 
     const result = await db.query(query, params);
-    return result.rows;
+    
+    // Transform output to match expected frontend structure (category: string)
+    // The frontend expects '.category' to be the name string in many places.
+    return result.rows.map(row => ({
+        ...row,
+        category: row.category_name || row.category // Fallback to old col if join fails? Or just use name.
+    }));
   }
 
   /**
@@ -83,9 +97,21 @@ class MenuModel {
       // throw or return null; choose return null so service can handle notFound
       return null;
     }
-    const query = 'SELECT * FROM menu_items WHERE item_id = $1';
+    const query = `
+      SELECT m.*, c.name as category_name 
+      FROM menu_items m
+      LEFT JOIN categories c ON m.category_id = c.category_id
+      WHERE m.item_id = $1
+    `;
     const result = await db.query(query, [id]);
-    return result.rows[0];
+    
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    return {
+        ...row,
+        category: row.category_name || row.category // Prefer dynamic name
+    };
   }
 
   /**
@@ -99,7 +125,7 @@ class MenuModel {
     const allowedFields = [
       'name',
       'description',
-      'category',
+      'categoryId', // Changed/Added
       'price',
       'imageUrl',
       'isAvailable',
@@ -110,7 +136,7 @@ class MenuModel {
     const fieldMapping = {
       name: 'name',
       description: 'description',
-      category: 'category',
+      categoryId: 'category_id', // Mapped
       price: 'price',
       imageUrl: 'image_url',
       isAvailable: 'is_available',
