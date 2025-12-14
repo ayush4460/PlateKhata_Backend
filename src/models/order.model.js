@@ -216,11 +216,23 @@ class OrderModel {
       }
     }
 
-    // Date filter
+    // Date filter (Exact Match)
     if (filters.date) {
       query += ` AND DATE(o.created_at) = $${paramCount++}`;
       params.push(filters.date);
       //console.log('[DEBUG MODEL findAll] Added date filter:', filters.date);
+    }
+
+    // Date Range Filter (Start Date)
+    if (filters.startDate) {
+        query += ` AND DATE(o.created_at) >= $${paramCount++}`;
+        params.push(filters.startDate);
+    }
+
+    // Date Range Filter (End Date)
+    if (filters.endDate) {
+        query += ` AND DATE(o.created_at) <= $${paramCount++}`;
+        params.push(filters.endDate);
     }
 
     // Restaurant filter

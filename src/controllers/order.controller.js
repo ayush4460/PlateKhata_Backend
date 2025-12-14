@@ -53,7 +53,7 @@ class OrderController {
   // Replace the getAllOrders method in order.controller.js
 
 static getAllOrders = catchAsync(async (req, res) => {
-  const { tableId, status, date } = req.query;
+  const { tableId, status, date, startDate, endDate } = req.query;
   const limit = req.query && req.query.limit ? parseInt(req.query.limit, 10) || 200 : 200;
   const user = req.user || null;
   const sessionToken = req.headers['x-session-token'];
@@ -69,6 +69,8 @@ static getAllOrders = catchAsync(async (req, res) => {
     if (tableId) filters.tableId = tableId;
     if (status) filters.status = Array.isArray(status) ? status : [status];
     if (date) filters.date = date;
+    if (startDate) filters.startDate = startDate;
+    if (endDate) filters.endDate = endDate;
     filters.limit = limit;
     filters.includeAllForStaff = true;
     filters.restaurantId = user.restaurantId;
