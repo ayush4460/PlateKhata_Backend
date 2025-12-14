@@ -351,15 +351,33 @@ class OrderService {
           console.error(`[OrderService] Failed to set grace period: ${order.session_id}`, err);
         }
       }
-      return await OrderModel.findById(orderId);
     }
 
-    if (paymentStatus === 'Approved') {
-      return await OrderModel.updatePaymentAndOrderState(orderId, paymentStatus, 'completed');
-    } else if (paymentStatus === 'Requested') {
-      return await OrderModel.updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod);
+
+
+    const sessionId = order.session_id;
+
+    if (sessionId) {
+      // Update ALL orders in the session
+      let updatedOrders;
+      if (paymentStatus === 'Approved') {
+        updatedOrders = await OrderModel.updateSessionPaymentAndOrderState(sessionId, paymentStatus, 'completed', paymentMethod);
+      } else if (paymentStatus === 'Requested') {
+        updatedOrders = await OrderModel.updateSessionPaymentStatusWithMethod(sessionId, paymentStatus, paymentMethod);
+      } else {
+        updatedOrders = await OrderModel.updateSessionPaymentStatusOnly(sessionId, paymentStatus);
+      }
+      // Return the specific order that was requested (updated version)
+      return updatedOrders.find(o => String(o.order_id) === String(orderId)) || updatedOrders[0];
     } else {
-      return await OrderModel.updatePaymentStatusOnly(orderId, paymentStatus);
+        // Fallback for orders without session_id (legacy/edge case)
+        if (paymentStatus === 'Approved') {
+            return await OrderModel.updatePaymentAndOrderState(orderId, paymentStatus, 'completed', paymentMethod);
+        } else if (paymentStatus === 'Requested') {
+            return await OrderModel.updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod);
+        } else {
+            return await OrderModel.updatePaymentStatusOnly(orderId, paymentStatus);
+        }
     }
   }
 

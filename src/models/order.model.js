@@ -328,18 +328,54 @@ class OrderModel {
     return result.rows[0];
   }
 
+  static async updateSessionPaymentStatusWithMethod(sessionId, paymentStatus, paymentMethod) {
+    const query = `
+      UPDATE orders
+      SET payment_status = $1, payment_method = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE session_id = $3 AND order_status NOT IN ('cancelled')
+      RETURNING *
+    `;
+    const result = await db.query(query, [paymentStatus, paymentMethod, sessionId]);
+    return result.rows;
+  }
+
+  static async updateSessionPaymentStatusOnly(sessionId, paymentStatus) {
+    const query = `
+      UPDATE orders
+      SET payment_status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE session_id = $2 AND order_status NOT IN ('cancelled')
+      RETURNING *
+    `;
+    const result = await db.query(query, [paymentStatus, sessionId]);
+    return result.rows;
+  }
+
   /**
    * Update both payment status and order status
    */
-  static async updatePaymentAndOrderState(orderId, paymentStatus, orderStatus) {
+  static async updatePaymentAndOrderState(orderId, paymentStatus, orderStatus, paymentMethod) {
     const query = `
       UPDATE orders
-      SET payment_status = $1, order_status = $2, updated_at = CURRENT_TIMESTAMP
-      WHERE order_id = $3
+      SET payment_status = $1, order_status = $2, payment_method = COALESCE($3, payment_method), updated_at = CURRENT_TIMESTAMP
+      WHERE order_id = $4
       RETURNING *
     `;
-    const result = await db.query(query, [paymentStatus, orderStatus, orderId]);
+    const result = await db.query(query, [paymentStatus, orderStatus, paymentMethod, orderId]);
     return result.rows[0];
+  }
+
+  /**
+   * Update payment status and order status for ENTIRE SESSION
+   */
+  static async updateSessionPaymentAndOrderState(sessionId, paymentStatus, orderStatus, paymentMethod) {
+    const query = `
+      UPDATE orders
+      SET payment_status = $1, order_status = $2, payment_method = COALESCE($3, payment_method), updated_at = CURRENT_TIMESTAMP
+      WHERE session_id = $4 AND order_status NOT IN ('cancelled')
+      RETURNING *
+    `;
+    const result = await db.query(query, [paymentStatus, orderStatus, paymentMethod, sessionId]);
+    return result.rows; // Returns array of updated orders
   }
 
   /**
