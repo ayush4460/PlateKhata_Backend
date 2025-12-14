@@ -8,17 +8,23 @@ class MenuModel {
     const {
       name,
       description,
-      categoryId, // Changed from category
+      categoryId,
       price,
       imageUrl,
       isVegetarian,
+      dietaryType, // New field
       preparationTime,
       restaurantId,
     } = itemData;
 
+    // Default dietaryType based on isVegetarian if not provided
+    const finalDietaryType = dietaryType || (isVegetarian ? 'veg' : 'non_veg');
+    // Keep is_vegetarian for backward compatibility (synced with type)
+    const finalIsVegetarian = finalDietaryType === 'veg';
+
     const query = `
-      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, preparation_time, restaurant_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, dietary_type, preparation_time, restaurant_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
 
@@ -28,7 +34,8 @@ class MenuModel {
       categoryId,
       price,
       imageUrl,
-      isVegetarian || false,
+      finalIsVegetarian,
+      finalDietaryType,
       preparationTime,
       restaurantId,
     ]);
@@ -73,6 +80,13 @@ class MenuModel {
       query += ` AND m.is_vegetarian = $${paramCount}`;
       params.push(filters.isVegetarian);
       paramCount++;
+    }
+    
+    // Support filtering by dietary type
+    if (filters.dietaryType) {
+        query += ` AND m.dietary_type = $${paramCount}`;
+        params.push(filters.dietaryType);
+        paramCount++;
     }
 
     // Sort by Display Order (Category) -> Category Name -> Item Name
@@ -122,25 +136,35 @@ class MenuModel {
     const params = [];
     let paramCount = 1;
 
+    // Handle dietary type sync logic if provided
+    if (updates.dietaryType) {
+        updates.isVegetarian = updates.dietaryType === 'veg';
+    } else if (updates.isVegetarian !== undefined) {
+        // If checking legacy toggle, update type
+        updates.dietaryType = updates.isVegetarian ? 'veg' : 'non_veg';
+    }
+
     const allowedFields = [
       'name',
       'description',
-      'categoryId', // Changed/Added
+      'categoryId', 
       'price',
       'imageUrl',
       'isAvailable',
       'isVegetarian',
+      'dietaryType', // Added
       'preparationTime',
     ];
 
     const fieldMapping = {
       name: 'name',
       description: 'description',
-      categoryId: 'category_id', // Mapped
+      categoryId: 'category_id',
       price: 'price',
       imageUrl: 'image_url',
       isAvailable: 'is_available',
       isVegetarian: 'is_vegetarian',
+      dietaryType: 'dietary_type', // Mapped
       preparationTime: 'preparation_time',
     };
 

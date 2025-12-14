@@ -26,13 +26,14 @@ class MenuController {
    * GET /api/v1/menu
    */
   static getAllItems = catchAsync(async (req, res) => {
-    const { category, isAvailable, isVegetarian } = req.query;
+    const { category, isAvailable, isVegetarian, dietaryType } = req.query;
 
     const filters = {};
     if (category) filters.category = category;
     if (isAvailable !== undefined) filters.isAvailable = isAvailable === 'true';
     if (isVegetarian !== undefined)
       filters.isVegetarian = isVegetarian === 'true';
+    if (dietaryType) filters.dietaryType = dietaryType;
 
     // Multi-tenancy
     if (req.user && req.user.restaurantId) {

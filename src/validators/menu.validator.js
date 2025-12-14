@@ -29,6 +29,11 @@ exports.createMenuItemValidator = [
     .optional()
     .isInt({ min: 1 })
     .withMessage('Preparation time must be a positive integer'),
+
+  body('dietaryType')
+    .optional()
+    .isIn(['veg', 'non_veg', 'eggitarian'])
+    .withMessage('Invalid dietary type'),
 ];
 
 exports.updateMenuItemValidator = [
@@ -65,4 +70,9 @@ exports.updateMenuItemValidator = [
     .optional()
     .isBoolean()
     .withMessage('isVegetarian must be boolean'),
+
+  body('dietaryType')
+    .optional()
+    .isIn(['veg', 'non_veg', 'eggitarian'])
+    .withMessage('Invalid dietary type'),
 ];
