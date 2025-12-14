@@ -63,6 +63,15 @@ router.patch(
   OrderController.updatePaymentStatus
 );
 
+// Route for Admin to override Session Total
+router.patch(
+  '/session/:sessionId/total',
+  authenticate,
+  authorize(ROLES.ADMIN),
+  validate, // strictly we should have a validator here but body.total is checked in controller
+  OrderController.updateSessionTotal
+);
+
 // Payment request route for customers
 router.patch(
   '/:id/payment-request',

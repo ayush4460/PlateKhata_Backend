@@ -467,6 +467,71 @@ class OrderService {
     if (orders.length > 0) { stats.averageOrderValue = stats.totalRevenue / stats.length; }
     return stats;
   }
+
+  /**
+   * Update session total (Admin Override)
+   */
+  static async updateSessionTotal(sessionId, newTotal) {
+    if (newTotal < 0) {
+      throw ApiError.badRequest('Total cannot be negative');
+    }
+
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const res = await client.query(`
+        SELECT order_id, total_amount, discount_amount, tax_amount, subtotal
+        FROM orders 
+        WHERE session_id = $1 
+          AND order_status NOT IN ('cancelled', 'completed')
+        ORDER BY created_at DESC
+      `, [sessionId]);
+
+      if (res.rows.length === 0) {
+        throw ApiError.notFound('No active orders found for this session');
+      }
+
+      const orders = res.rows;
+      const currentSessionTotal = orders.reduce((sum, o) => sum + parseFloat(o.total_amount), 0);
+      const difference = currentSessionTotal - newTotal;
+      
+      console.log(`[OrderService] Override: Current=${currentSessionTotal}, New=${newTotal}, Diff=${difference}`);
+
+      if (Math.abs(difference) < 0.01) {
+        await client.query('ROLLBACK');
+        return { sessionId, oldTotal: currentSessionTotal, newTotal: currentSessionTotal }; 
+      }
+
+      const latestOrder = orders[0];
+      const oldDiscount = parseFloat(latestOrder.discount_amount || 0);
+      let newDiscount = oldDiscount + difference;
+      
+      const oldTotal = parseFloat(latestOrder.total_amount);
+      const newOrderTotal = oldTotal - difference;
+
+      await client.query(`
+        UPDATE orders 
+        SET discount_amount = $1, total_amount = $2, updated_at = NOW()
+        WHERE order_id = $3
+      `, [newDiscount, newOrderTotal, latestOrder.order_id]);
+
+      await client.query('COMMIT');
+      
+      return { 
+        sessionId, 
+        oldTotal: currentSessionTotal, 
+        newTotal: newTotal 
+      };
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('[OrderService] updateSessionTotal failed:', err);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = OrderService;
