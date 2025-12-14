@@ -133,9 +133,9 @@ class OrderModel {
     const query = `
       INSERT INTO order_items (
           order_id, item_id, quantity, unit_price, total_price,
-          item_name, item_category, special_instructions, status
+          item_name, item_category, special_instructions, status, spice_level
         )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9)
       RETURNING *
     `;
 
@@ -151,6 +151,7 @@ class OrderModel {
         item.itemName,
         item.itemCategory,
         item.specialInstructions,
+        item.spiceLevel || null, // Capture spice level
       ]);
       orderItems.push(result.rows[0]);
     }
@@ -173,7 +174,8 @@ class OrderModel {
             'quantity', oi.quantity,
             'unit_price', oi.unit_price,
             'special_instructions', oi.special_instructions,
-            'item_category', oi.item_category
+            'item_category', oi.item_category,
+            'spice_level', oi.spice_level
           )
         ORDER BY oi.order_item_id
       ) FILTER (WHERE oi.order_item_id IS NOT NULL) as items
@@ -270,7 +272,8 @@ class OrderModel {
             'quantity', oi.quantity,
             'unit_price', oi.unit_price,
             'special_instructions', oi.special_instructions,
-            'item_category', oi.item_category
+            'item_category', oi.item_category,
+            'spice_level', oi.spice_level
           )
         ORDER BY oi.order_item_id
       ) FILTER (WHERE oi.order_item_id IS NOT NULL) as items
@@ -394,7 +397,8 @@ class OrderModel {
             'item_name', oi.item_name,
             'quantity', oi.quantity,
             'special_instructions', oi.special_instructions,
-            'item_category', oi.item_category
+            'item_category', oi.item_category,
+            'spice_level', oi.spice_level
           ) ORDER BY oi.order_item_id
         ) FILTER (WHERE oi.order_item_id IS NOT NULL) as items
       FROM orders o

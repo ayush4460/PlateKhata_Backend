@@ -15,6 +15,7 @@ class MenuModel {
       dietaryType, // New field
       preparationTime,
       restaurantId,
+      hasSpiceLevels = false, // New field
     } = itemData;
 
     // Default dietaryType based on isVegetarian if not provided
@@ -23,8 +24,8 @@ class MenuModel {
     const finalIsVegetarian = finalDietaryType === 'veg';
 
     const query = `
-      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, dietary_type, preparation_time, restaurant_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, dietary_type, preparation_time, restaurant_id, has_spice_levels)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
 
@@ -38,6 +39,7 @@ class MenuModel {
       finalDietaryType,
       preparationTime,
       restaurantId,
+      hasSpiceLevels,
     ]);
 
     return result.rows[0];
@@ -153,7 +155,9 @@ class MenuModel {
       'isAvailable',
       'isVegetarian',
       'dietaryType', // Added
+      'dietaryType', // Added
       'preparationTime',
+      'hasSpiceLevels',
     ];
 
     const fieldMapping = {
@@ -165,7 +169,9 @@ class MenuModel {
       isAvailable: 'is_available',
       isVegetarian: 'is_vegetarian',
       dietaryType: 'dietary_type', // Mapped
+      dietaryType: 'dietary_type', // Mapped
       preparationTime: 'preparation_time',
+      hasSpiceLevels: 'has_spice_levels',
     };
 
     for (const [key, value] of Object.entries(updates)) {

@@ -106,6 +106,7 @@ class OrderService {
         quantity: item.quantity,
         price: price,
         specialInstructions: item.specialInstructions || null,
+        spiceLevel: item.spiceLevel || item.spice_level || null, // Added mapping
       });
     }
 
