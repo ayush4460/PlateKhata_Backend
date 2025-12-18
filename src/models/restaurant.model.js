@@ -70,6 +70,40 @@ class RestaurantModel {
     const result = await db.query(query, params);
     return result.rows;
   }
+  /**
+   * Update restaurant
+   */
+  static async update(restaurantId, data) {
+    const keys = Object.keys(data);
+    if (keys.length === 0) return null;
+
+    // Map camelCase to snake_case for DB
+    const map = {
+        zomatoRestaurantId: 'zomato_restaurant_id',
+        swiggyRestaurantId: 'swiggy_restaurant_id',
+        name: 'name',
+        address: 'address',
+        contactEmail: 'contact_email',
+        isActive: 'is_active'
+    };
+
+    const sets = [];
+    const values = [];
+    let i = 1;
+
+    keys.forEach(key => {
+        const dbKey = map[key] || key; 
+        sets.push(`${dbKey} = $${i}`);
+        values.push(data[key]);
+        i++;
+    });
+
+    values.push(restaurantId);
+    const query = `UPDATE restaurants SET ${sets.join(', ')} WHERE restaurant_id = $${i} RETURNING *`;
+    
+    const result = await db.query(query, values);
+    return result.rows[0];
+  }
 }
 
 module.exports = RestaurantModel;

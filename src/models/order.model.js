@@ -20,18 +20,25 @@ class OrderModel {
     paymentStatus = 'Pending',
     discountAmount = 0,
     orderType = 'regular',
-
     sessionId,
-    restaurantId
+    restaurantId,
+    
+    // New fields for online orders
+    externalOrderId = null,
+    externalPlatform = null,
+    dynoOrderId = null,
+    rawStatus = null,
+    externalOutletId = null
   } = orderData;
 
   const query = `
     INSERT INTO orders (
         table_id, customer_name, customer_phone, customer_email,
         subtotal, tax_amount, discount_amount, total_amount, applied_tax_rate,
-        special_instructions, order_status, payment_status, order_type, order_number, session_id, restaurant_id
+        special_instructions, order_status, payment_status, order_type, order_number, session_id, restaurant_id,
+        external_order_id, external_platform, dyno_order_id, raw_status, external_outlet_id
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
     RETURNING *
   `;
 
@@ -49,7 +56,8 @@ class OrderModel {
       const result = await client.query(query, [
         tableId, customerName, customerPhone, null,
         subtotal, taxAmount, discountAmount, totalAmount, appliedTaxRate,
-        specialInstructions, orderStatus, paymentStatus, orderType, order_number, sessionId, restaurantId
+        specialInstructions, orderStatus, paymentStatus, orderType, order_number, sessionId, restaurantId,
+        externalOrderId, externalPlatform, dynoOrderId, rawStatus, externalOutletId
       ]);
 
       console.log(`[OrderModel] Order created successfully: ${result.rows[0].order_id}`);
@@ -241,6 +249,12 @@ class OrderModel {
     if (filters.restaurantId) {
       query += ` AND o.restaurant_id = $${paramCount++}`;
       params.push(filters.restaurantId);
+    }
+
+    // Order Type filter
+    if (filters.orderType) {
+        query += ` AND o.order_type = $${paramCount++}`;
+        params.push(filters.orderType);
     }
 
     query += ' GROUP BY o.order_id, t.table_number ORDER BY o.created_at DESC';

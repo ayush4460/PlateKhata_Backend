@@ -18,6 +18,8 @@ router.patch(
   SettingsController.updateSettings
 );
 
-router.get('/public', SettingsController.getPublicSettings);
+// Use optionalAuth to populate req.user if token is present
+const { optionalAuth } = require('../middlewares/auth.middleware');
+router.get('/public', optionalAuth, SettingsController.getPublicSettings);
 
 module.exports = router;

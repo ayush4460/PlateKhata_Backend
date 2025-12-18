@@ -9,8 +9,14 @@ const compression = require('compression');
 const routes = require('./routes');
 const errorMiddleware = require('./middlewares/error.middleware');
 const { apiLimiter } = require('./middlewares/rateLimiter.middleware');
+const startOrderSync = require('./cron/order-sync');
 
 const app = express();
+
+// Initialize Order Sync Cron
+if (process.env.NODE_ENV !== 'test') { // Prevent running in tests
+  startOrderSync();
+}
 
 // Trust proxy (important for rate limiting behind reverse proxy)
 app.set('trust proxy', 1);

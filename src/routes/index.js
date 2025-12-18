@@ -9,6 +9,8 @@ const orderRoutes = require('./order.routes');
 const tableRoutes = require('./table.routes');
 const settingsRoutes = require('./settings.routes');
 const uploadRoutes = require('./upload.routes');
+const onlineOrderRoutes = require('./online-order.routes');
+const dynoWebhookRoutes = require('./dyno-webhook.routes');
 
 // Health check
 router.get('/', (req, res) => {
@@ -29,12 +31,14 @@ router.get('/', (req, res) => {
 
 // Mount routes
 router.use('/auth', authRoutes);
-router.use('/menu', menuRoutes);
-router.use('/categories', categoryRoutes); // Added
-router.use('/orders', orderRoutes);
 router.use('/tables', tableRoutes);
-router.use('/settings', settingsRoutes);
+router.use('/categories', categoryRoutes);
+router.use('/menu', menuRoutes);
+router.use('/orders', orderRoutes); // Local Orders
+router.use('/online-orders', onlineOrderRoutes); // Online Orders (Manual Actions)
+router.use('/dyno', dynoWebhookRoutes); // Webhook Endpoints (Push/Poll)
 router.use('/uploads', uploadRoutes);
+router.use('/settings', settingsRoutes);
 router.use('/public', require('./public.routes'));
 
 module.exports = router;
