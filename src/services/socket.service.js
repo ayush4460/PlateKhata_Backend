@@ -90,6 +90,7 @@ class SocketService {
       this.io.to(`table:${tableId}`).emit('order:statusUpdate', {
         orderId,
         status,
+        tableId, // Added for frontend context
       });
     }
   }
