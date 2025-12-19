@@ -86,6 +86,16 @@ class AuthService {
       restaurantId: user.restaurant_id,
     });
 
+    // Fetch restaurant details to get the slug
+    let restaurantSlug = null;
+    if (user.restaurant_id) {
+      const RestaurantModel = require('../models/restaurant.model');
+      const restaurant = await RestaurantModel.findById(user.restaurant_id);
+      if (restaurant) {
+        restaurantSlug = restaurant.slug;
+      }
+    }
+
     return {
       user: {
         userId: user.user_id,
@@ -94,6 +104,7 @@ class AuthService {
         fullName: user.full_name,
         role: user.role,
         restaurantId: user.restaurant_id,
+        restaurantSlug: restaurantSlug, // Added for frontend redirection
       },
       ...tokens,
     };
