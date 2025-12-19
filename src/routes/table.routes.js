@@ -16,6 +16,10 @@ const createTableValidator = [
   body('capacity')
     .isInt({ min: 1, max: 20 })
     .withMessage('Capacity must be between 1-20'),
+  body('restaurantId')
+    .optional()
+    .isInt()
+    .withMessage('Restaurant ID must be an integer'),
 ];
 
 const updateTableValidator = [

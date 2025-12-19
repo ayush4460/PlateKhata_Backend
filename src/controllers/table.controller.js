@@ -13,25 +13,31 @@ class TableController {
    */
   // controllers/table.controller.js
   static createTable = catchAsync(async (req, res) => {
-    const { tableNumber, capacity } = req.body;
-    const restaurantId = req.user.restaurantId;
+    const { tableNumber, capacity, restaurantId } = req.body;
+
+    // Use passed restaurantId, fallback to user's restaurantId, or error
+    const targetRestaurantId = restaurantId || req.user.restaurantId;
+
+    if (!targetRestaurantId) {
+        throw ApiError.badRequest('Restaurant ID is required');
+    }
 
     // Check if table number already exists
-    const existing = await TableModel.findByNumber(tableNumber, restaurantId);
+    const existing = await TableModel.findByNumber(tableNumber, targetRestaurantId);
 
     if (existing) {
       // If it exists but is soft-deleted (disabled), RESTORE it
       if (existing.is_available === false) {
         // Regenerate a QR for the same table_id / table_number
         // Need restaurant slug first
-        const restaurant = await RestaurantModel.findById(restaurantId);
+        const restaurant = await RestaurantModel.findById(targetRestaurantId);
         let finalSlug = restaurant.slug || restaurant.restaurant_id || restaurant.id;
         
         const qrCodeUrl = await QRCodeService.generateTableQRCode(
           existing.table_id,
           existing.table_number,
           finalSlug,
-          restaurantId
+          targetRestaurantId
         );
 
         const restored = await TableModel.update(existing.table_id, {
@@ -47,47 +53,15 @@ class TableController {
     }
 
     // Verify restaurant slug
-    const restaurant = await RestaurantModel.findById(restaurantId);
-    let finalSlug = restaurant.slug;
-    if (!finalSlug) {
-        finalSlug = restaurant.restaurant_id || restaurant.id;
-    }
+    const restaurant = await RestaurantModel.findById(targetRestaurantId);
+    if (!restaurant) throw ApiError.notFound('Restaurant not found');
 
-    const qrCodeUrl = await QRCodeService.generateTableQRCode(
-      tableNumber, // wait, generateTableQRCode first arg is tableId
-      tableNumber,
-      finalSlug,
-      restaurantId
-    );
-
-    // Wait, first arg of generateTableQRCode is tableId.
-    // But tableId is not generated yet!
-    // The previous code was: await QRCodeService.generateTableQRCode(tableNumber, tableNumber);
-    // This looks like a bug in original code too, using tableNumber as tableId?
-    // Let's create table FIRST with null QR, then update it. 
-    // Or just pass null/0 as tableId if not needed for the token? 
-    // Token uses tableId as 't'. If we pass tableNumber, 't' becomes tableNumber.
-    // If tableNumber is unique per restaurant, that is fine.
-    
-    // Better approach: delegate to TableService.createTable completely if possible.
-    // TableService.createTable logic I added handles this correctly:
-    // 1. Create table (gets ID)
-    // 2. Resolve Slug
-    // 3. Generate QR (using real ID)
-    // 4. Update Table
-    
-    // So here in Controller we should just call TableService.createTable if it supports all args?
-    // TableService.createTable(data) takes { tableNumber, restaurantId, capacity... }
-    
-    // So I should replace direct Model calls with Service call.
-    
+    // Delegate to Service
     const table = await TableService.createTable({
         tableNumber,
         capacity,
-        restaurantId
+        restaurantId: targetRestaurantId
     });
-
-    return ApiResponse.created(res, table, 'Table created successfully');
 
     return ApiResponse.created(res, table, 'Table created successfully');
   });

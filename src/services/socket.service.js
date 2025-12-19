@@ -12,8 +12,15 @@ class SocketService {
   initializeSocket(server) {
     this.io = new Server(server, {
       cors: {
-        origin: config.corsOrigin,
+        origin: [
+            config.corsOrigin, 
+            "http://localhost:9002", 
+            "http://localhost:3000",
+            "http://127.0.0.1:9002",
+            "*" // Temporary for debugging if needed, but array allows specific origins
+        ].filter(Boolean),
         credentials: true,
+        methods: ["GET", "POST"]
       },
     });
 

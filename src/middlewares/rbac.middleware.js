@@ -12,6 +12,7 @@ const authorize = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
+      console.log(`[RBAC ERROR] User Role: ${req.user.role}, Allowed: ${allowedRoles}, UserID: ${req.user.userId}`);
       throw ApiError.forbidden('Insufficient permissions');
     }
 

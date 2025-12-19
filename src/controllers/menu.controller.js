@@ -14,8 +14,13 @@ class MenuController {
       ...req.body,
       // Use Cloudinary URL if file uploaded, otherwise null
       imageUrl: req.file ? req.file.path : null,
-      restaurantId: req.user.restaurantId,
+      imageUrl: req.file ? req.file.path : null,
+      restaurantId: req.body.restaurantId || req.user.restaurantId,
     };
+    
+    if (!itemData.restaurantId) {
+        throw ApiError.badRequest('Restaurant ID is required');
+    }
 
     const item = await MenuService.createItem(itemData);
     return ApiResponse.created(res, item, 'Menu item created successfully');

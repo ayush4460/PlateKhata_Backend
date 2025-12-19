@@ -84,7 +84,9 @@ class RestaurantModel {
         name: 'name',
         address: 'address',
         contactEmail: 'contact_email',
-        isActive: 'is_active'
+        isActive: 'is_active',
+        slug: 'slug',
+        tagline: 'tagline'
     };
 
     const sets = [];

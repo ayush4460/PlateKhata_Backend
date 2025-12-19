@@ -29,11 +29,11 @@ class CategoryController {
 
   static async create(req, res) {
     try {
-      const { name, displayOrder, display_order } = req.body;
-      const restaurantId = req.user?.restaurantId;
+      const { name, displayOrder, display_order, restaurantId } = req.body;
+      const targetRestaurantId = restaurantId || req.user?.restaurantId;
 
-      if (!restaurantId) {
-        return ApiResponse.error(res, 'Unauthorized', 401);
+      if (!targetRestaurantId) {
+        return ApiResponse.error(res, 'Restaurant ID required', 400);
       }
       if (!name) {
         return ApiResponse.error(res, 'Name is required', 400);
@@ -43,7 +43,7 @@ class CategoryController {
       const finalOrder = displayOrder !== undefined ? displayOrder : display_order;
 
       const category = await CategoryModel.create({ 
-          restaurantId, 
+          restaurantId: targetRestaurantId, 
           name, 
           displayOrder: finalOrder 
       });

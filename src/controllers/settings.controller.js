@@ -5,14 +5,24 @@ const catchAsync = require('../utils/catchAsync');
 
 class SettingsController {
   static updateSettings = catchAsync(async (req, res) => {
-    const { taxRate, discountRate, upiId, zomatoRestaurantId, swiggyRestaurantId } = req.body;
+    const { 
+        taxRate, 
+        discountRate, 
+        upiId, 
+        zomatoRestaurantId, 
+        swiggyRestaurantId,
+        name,
+        address,
+        contactEmail,
+        tagline
+    } = req.body;
     const { restaurantId } = req.user;
 
     if (!restaurantId) {
         throw new Error('User does not have a restaurantId');
     }
 
-    // Update settings table
+    // Update settings table (Financial/App Settings)
     if (taxRate !== undefined) {
         await SettingsService.updateSetting(restaurantId, 'tax_rate', taxRate);
     }
@@ -25,52 +35,37 @@ class SettingsController {
       await SettingsService.updateSetting(restaurantId, 'upi_id', upiId);
     }
 
-    // Update restaurants table (Platform IDs)
-    if (zomatoRestaurantId !== undefined || swiggyRestaurantId !== undefined) {
-        const updateData = {};
-        if (zomatoRestaurantId !== undefined) updateData.zomatoRestaurantId = zomatoRestaurantId;
-        if (swiggyRestaurantId !== undefined) updateData.swiggyRestaurantId = swiggyRestaurantId;
-        
-        // We need a method in RestaurantModel to update these specific fields
-        // Or generic update. Let's assume generic update or add specific one.
-        // Checking RestaurantModel... it has 'create', 'findBySlug', 'findById', 'findAll'.
-        // It DOES NOT have 'update'. I need to add it.
-        const RestaurantModel = require('../models/restaurant.model');
-        await RestaurantModel.update(restaurantId, updateData);
+    // Update restaurants table (Platform IDs & Core Details)
+    const restaurantData = {};
+    if (zomatoRestaurantId !== undefined) restaurantData.zomatoRestaurantId = zomatoRestaurantId;
+    if (swiggyRestaurantId !== undefined) restaurantData.swiggyRestaurantId = swiggyRestaurantId;
+    if (name !== undefined) restaurantData.name = name;
+    if (address !== undefined) restaurantData.address = address;
+    if (contactEmail !== undefined) restaurantData.contactEmail = contactEmail;
+    if (tagline !== undefined) restaurantData.tagline = tagline;
+
+    let updatedRestaurant = null;
+    if (Object.keys(restaurantData).length > 0) {
+        updatedRestaurant = await SettingsService.updateRestaurantDetails(restaurantId, restaurantData);
     }
 
-    return ApiResponse.success(res, { taxRate, discountRate, upiId, zomatoRestaurantId, swiggyRestaurantId }, 'Settings updated successfully.');
+    return ApiResponse.success(res, { 
+        taxRate, 
+        discountRate, 
+        upiId, 
+        updatedRestaurant 
+    }, 'Settings updated successfully.');
   });
 
   static getPublicSettings = catchAsync(async (req, res) => {
-    // Note: Public settings might NOT typically include private IDs, but for the Admin Dashboard (which uses this?), it's fine.
-    // However, useCart calls this "public" endpoint. Exposing Restaurant IDs is generally safe (they are public on aggregator sites).
-    
     // We need to know WHICH restaurant? 
-    // Usually via query param 'restaurantId' or subdomain. 
-    // The previous code didn't check! It just returned... wait, getSetting takes a key.
-    // SettingsService.getSetting(key) seems to lack restaurantId in the signature from my previous view!
-    // Let's re-read SettingsService. It does `const query = ... WHERE setting_key = $1`.
-    // GLOBAL SETTINGS?! 
-    // If SettingsService.getSetting(key) does NOT filter by restaurantId, then it's a single-tenant system or broken for multi-tenant.
-    // The user asked for "centralised... multiple resturants...".
-    // I should fix SettingsService.getSetting too if I can.
-    
-    // But for now, let's just stick to the pattern.
-    const taxRateRaw = await SettingsService.getSetting('tax_rate');
-    const discountRateRaw = await SettingsService.getSetting('discount_rate');
-    const upiId = await SettingsService.getSetting('upi_id');
-
-    // Retrieve Platform IDs (Assumes single main restaurant or we need logic)
-    // For now, let's fetch the FIRST restaurant or one based on query if possible.
-    // This part is tricky without context of how the frontend knows which restaurant.
-    // If it's single tenant:
-    // Check for restaurantId in query or params
     let { restaurantId } = req.query;
-    
-    // If no query param, check if authenticated user is making request
     if (!restaurantId && req.user && req.user.restaurantId) {
         restaurantId = req.user.restaurantId;
+    }
+
+    if (restaurantId && isNaN(parseInt(restaurantId))) {
+         return ApiResponse.error(res, 'Invalid Restaurant ID', 400); 
     }
 
     const RestaurantModel = require('../models/restaurant.model');
@@ -81,7 +76,13 @@ class SettingsController {
     } else {
         const restaurants = await RestaurantModel.findAll();
         mainRest = restaurants[0] || {};
+        restaurantId = mainRest.restaurant_id; // Set ID if we fell back to default
     }
+
+    // Fetch settings for this specific restaurant
+    const taxRateRaw = await SettingsService.getSetting('tax_rate', restaurantId);
+    const discountRateRaw = await SettingsService.getSetting('discount_rate', restaurantId);
+    const upiId = await SettingsService.getSetting('upi_id', restaurantId);
 
     const taxRate = taxRateRaw != null ? parseFloat(taxRateRaw) : 0;
     const discountRate = discountRateRaw != null ? parseFloat(discountRateRaw) : 0;
@@ -93,7 +94,12 @@ class SettingsController {
         discountRate,
         upiId: upiId || '',
         zomatoRestaurantId: mainRest.zomato_restaurant_id || '',
-        swiggyRestaurantId: mainRest.swiggy_restaurant_id || ''
+        swiggyRestaurantId: mainRest.swiggy_restaurant_id || '',
+        restaurantName: mainRest.name || '',
+        restaurantAddress: mainRest.address || '',
+        contactEmail: mainRest.contact_email || '',
+        restaurantSlug: mainRest.slug || '',
+        tagline: mainRest.tagline || ''
       },
       'Settings fetched successfully.'
     );
