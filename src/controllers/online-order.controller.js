@@ -9,7 +9,8 @@ const RestaurantModel = require('../models/restaurant.model');
 class OnlineOrderController {
     
     static syncOrders = catchAsync(async (req, res) => {
-        await OnlineOrderService.syncOrders();
+        const { restaurantId } = req.user;
+        await OnlineOrderService.syncOrders(restaurantId); // Pass restaurantId to scope the sync
         return ApiResponse.success(res, null, 'Orders synced successfully.');
     });
 

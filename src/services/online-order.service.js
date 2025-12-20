@@ -40,13 +40,18 @@ class OnlineOrderService {
     /**
      * Sync orders from Dyno
      */
-    static async syncOrders() {
-        console.log('[OnlineOrderService] Starting sync...');
+    static async syncOrders(targetRestaurantId = null) {
+        console.log(`[OnlineOrderService] Starting sync... Target ResID: ${targetRestaurantId || 'All'}`);
         
         // 1. Get all restaurants with mapped IDs
         const restaurants = await RestaurantModel.findAll();
-        const activeRestaurants = restaurants.filter(r => r.zomato_restaurant_id || r.swiggy_restaurant_id);
+        let activeRestaurants = restaurants.filter(r => r.zomato_restaurant_id || r.swiggy_restaurant_id);
         
+        // SCOPED SYNC: If user triggered sync, only check THEIR restaurant to avoid ID collision conflicts
+        if (targetRestaurantId) {
+            activeRestaurants = activeRestaurants.filter(r => String(r.restaurant_id) === String(targetRestaurantId));
+        }
+
         if (activeRestaurants.length === 0) {
             console.log('[OnlineOrderService] No restaurants configured for online orders.');
             return;
@@ -115,6 +120,10 @@ class OnlineOrderService {
             // remoteResId might be number or string
             return zIds.includes(String(remoteResId)) || sIds.includes(String(remoteResId));
         });
+
+        if (restaurant) {
+             console.log(`[OnlineOrderService] Matched Restaurant: ${restaurant.restaurant_name} (ID: ${restaurant.restaurant_id}) for External ResID: ${remoteResId}`);
+        }
 
         if (!restaurant) {
             console.warn(`[OnlineOrderService] Unknown restaurant ID: ${remoteResId} (Platform: ${platform}). Configured IDs:`, restaurants.map(r => `Z:[${r.zomato_restaurant_id}]/S:[${r.swiggy_restaurant_id}]`));
