@@ -1,6 +1,6 @@
-// backend/src/controllers/online-order.controller.js
 const OnlineOrderService = require('../services/online-order.service');
 const DynoService = require('../services/dyno.service');
+const socketService = require('../services/socket.service'); // Added import
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 const OrderModel = require('../models/order.model');
@@ -61,14 +61,18 @@ class OnlineOrderController {
 
     static acceptOrder = catchAsync(async (req, res) => {
         const { orderId } = req.params;
-        const { time } = req.body; // unified time param, default 30 in service
+        const { time } = req.body; 
         
-        // Use Service to handle platform switching
         await OnlineOrderService.acceptOrder(orderId, time);
         
         // Update Local Status
-        await OrderModel.updateStatus(orderId, 'confirmed');
+        const order = await OrderModel.updateStatus(orderId, 'confirmed');
         
+        // Emit Socket Update
+        if (order) {
+             socketService.emitOrderStatusUpdate(order.order_id, 'confirmed', order.table_id);
+        }
+
         return ApiResponse.success(res, null, 'Order accepted.');
     });
 
@@ -76,11 +80,15 @@ class OnlineOrderController {
         const { orderId } = req.params;
         const { reason } = req.body;
         
-        // Use Service
         await OnlineOrderService.rejectOrder(orderId, reason);
         
         // Update Local Status
-        await OrderModel.updateStatus(orderId, 'cancelled');
+        const order = await OrderModel.updateStatus(orderId, 'cancelled');
+
+        // Emit Socket Update
+        if (order) {
+            socketService.emitOrderStatusUpdate(order.order_id, 'cancelled', order.table_id);
+        }
         
         return ApiResponse.success(res, null, 'Order rejected.');
     });
@@ -88,12 +96,16 @@ class OnlineOrderController {
     static markReady = catchAsync(async (req, res) => {
         const { orderId } = req.params;
         
-        // Use Service
         await OnlineOrderService.markOrderReady(orderId);
         
         // Update Local Status
-        await OrderModel.updateStatus(orderId, 'ready');
+        const order = await OrderModel.updateStatus(orderId, 'ready');
         
+        // Emit Socket Update
+        if (order) {
+            socketService.emitOrderStatusUpdate(order.order_id, 'ready', order.table_id);
+        }
+
         return ApiResponse.success(res, null, 'Order marked ready.');
     });
     static getConfig = catchAsync(async (req, res) => {

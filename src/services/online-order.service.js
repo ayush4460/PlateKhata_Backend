@@ -179,21 +179,37 @@ class OnlineOrderService {
              orderItems = rawOrder.order.cartDetails.items.dishes.map(i => ({
                  itemId: null, // External item
                  itemName: i.name,
-                 price: i.unitCost || 0,
-                 quantity: i.quantity || 1,
+                 price: parseFloat(i.unitCost || 0),
+                 quantity: parseInt(i.quantity || 1),
                  specialInstructions: '',
-                 itemCategory: 'online'
+                 itemCategory: 'online',
+                 spiceLevel: null
              }));
         } else if (rawOrder.items) {
+             // Generic/Swiggy fallbacks
              orderItems = rawOrder.items.map(i => ({
                  itemId: null,
                  itemName: i.name,
-                 price: i.price,
-                 quantity: i.quantity,
+                 price: parseFloat(i.price || 0),
+                 quantity: parseInt(i.quantity || 1),
                  specialInstructions: '',
-                 itemCategory: 'online'
+                 itemCategory: 'online',
+                 spiceLevel: null
+             }));
+        } else if (platform === 'swiggy' && rawOrder.cart?.items) {
+             // Swiggy specific check
+             orderItems = rawOrder.cart.items.map(i => ({
+                 itemId: null,
+                 itemName: i.name,
+                 price: parseFloat(i.total || 0) / (i.quantity || 1),
+                 quantity: parseInt(i.quantity || 1),
+                 specialInstructions: '',
+                 itemCategory: 'online',
+                 spiceLevel: null
              }));
         }
+
+const socketService = require('./socket.service'); // Added import
 
         if (orderItems.length > 0) {
             try {
@@ -202,6 +218,15 @@ class OnlineOrderService {
             } catch (err) {
                  console.error(`[OnlineOrderService] Failed to create items for order #${newOrder.order_id}:`, err.message);
             }
+        } else {
+             console.warn(`[OnlineOrderService] No items found for ${platform} order #${externalId}. Raw Payload keys: ${Object.keys(rawOrder)}`);
+        }
+
+        // Fetch complete order with items for socket emit
+        const completeOrder = await OrderModel.findById(newOrder.order_id);
+        if (completeOrder) {
+            socketService.emitNewOrder(completeOrder);
+            console.log(`[OnlineOrderService] Emitted socket event for new order #${newOrder.order_id}`);
         }
 
         console.log(`[OnlineOrderService] Created local order ${newOrder.order_id} for ${platform} #${externalId}`);

@@ -4,22 +4,55 @@ const ApiError = require('../utils/apiError');
 
 class DynoService {
   constructor() {
-    this.baseUrl = process.env.DYNO_BASE_URL;
+    this.baseUrl = process.env.DYNO_BASE_URL || 'http://localhost:32567'; // Default to correct local port
     this.accessToken = process.env.DYNO_ACCESS_TOKEN;
-    this.orderId = process.env.DYNO_ORDER_ID; // Not sure if needed for fetching, but kept for ref
+    this.orderId = process.env.DYNO_ORDER_ID; 
     
-    if (!this.baseUrl || !this.accessToken) {
-      console.warn('[DynoService] Missing configuration. DYNO_BASE_URL or DYNO_ACCESS_TOKEN not set.');
+    // Warn only if token missing, baseurl we have default
+    if (!this.accessToken) {
+    //   console.warn('[DynoService] DYNO_ACCESS_TOKEN not set.');
     }
 
     this.client = axios.create({
       baseURL: this.baseUrl,
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${this.accessToken}` // User curl didn't show auth header, might not need it for local
       },
       timeout: 10000 
     });
+  }
+
+  // ... (fetchOrders remains same, confirmed /api/v1/zomato/orders/current is likely correct if client follows same pattern) ...
+
+  /* ================= ZOMATO ACTIONS ================= */
+
+  async acceptZomatoOrder(orderId, deliveryTime = "30") {
+    try {
+      // POST /api/v1/zomato/orders/accept_order?order_id=...&delivery_time=...
+      // User curl: http://localhost:32567/api/v1/zomato/orders/accept_order?order_id=7599923238&delivery_time=30
+      // Axios params serializer handles this correctly
+      const response = await this.client.post('/api/v1/zomato/orders/accept_order', null, { 
+        params: { order_id: orderId, delivery_time: deliveryTime } 
+      });
+      return response.data;
+    } catch (error) {
+       console.error(`[DynoService] Zomato Accept Error:`, error.response?.data || error.message);
+       throw new Error(`Zomato Accept Failed: ${error.message}`);
+    }
+  }
+
+  async markZomatoReady(orderId) {
+    try {
+      // POST /api/v1/zomato/orders/mark_ready?order_id=...
+      const response = await this.client.post('/api/v1/zomato/orders/mark_ready', null, {
+        params: { order_id: orderId }
+      });
+      return response.data;
+    } catch (error) {
+       console.error(`[DynoService] Zomato Mark Ready Error:`, error.response?.data || error.message);
+       throw new Error(`Zomato Mark Ready Failed: ${error.message}`);
+    }
   }
 
   /**

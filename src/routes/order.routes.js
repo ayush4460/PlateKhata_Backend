@@ -57,7 +57,7 @@ router.patch(
 router.patch(
   '/:id/payment',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN),
   updatePaymentStatusValidator,
   validate,
   OrderController.updatePaymentStatus
