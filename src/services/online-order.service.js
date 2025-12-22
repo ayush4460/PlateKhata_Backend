@@ -94,7 +94,12 @@ class OnlineOrderService {
             
             // Amount
             const cart = zDetails.cartDetails || {};
-            totalAmount = cart.total?.amountDetails?.totalCost || 0;
+            
+            // PRIORITY: Total Merchant Bill (Final Amount to be shown)
+            // JSON: cart.total.amountDetails.amountTotalCost (97.36) or displayCost ("₹97.36")
+            const merchantTotal = cart.total?.amountDetails?.amountTotalCost;
+            totalAmount = (merchantTotal !== undefined) ? merchantTotal : (cart.total?.amountDetails?.totalCost || 0);
+
             // Tax: try to find a tax charge
             taxAmount = 0; 
             if (cart.charges) {
@@ -103,6 +108,35 @@ class OnlineOrderService {
             }
 
             customerName = zDetails.creator?.name || 'Zomato Customer';
+            
+            // Extract Rider Details & Instructions
+            const riderElement = (zDetails.supportingRiderDetails || [])[0];
+            const riderName = riderElement?.name || '';
+            const riderPhone = riderElement?.phone || '';
+            
+            // Order Instructions (e.g., Cutlery)
+            const instructions = (zDetails.orderMessages || [])
+                .map(m => m.value?.message)
+                .filter(Boolean)
+                .join(', ');
+            
+            // Store Rider info in special_instructions JSON string or concatenated text?
+            // "Cutlery needed. Rider: Name (Phone)"
+            let extraInfo = instructions;
+            if (riderName) extraInfo += (extraInfo ? '. ' : '') + `Rider: ${riderName}`;
+            if (riderPhone) extraInfo += ` (${riderPhone})`;
+
+            // We'll store this in specialInstructions column
+            var specialInstructions = extraInfo;
+            // Also store Rider Phone in customer_phone as it's more actionable for the restaurant than masked user phone
+            // Also store Rider Phone in customer_phone as it's more actionable for the restaurant than masked user phone
+            let creatorPhone = '';
+            if (zDetails.creator?.phone) {
+                const isd = zDetails.creator.countryIsdCode || '';
+                creatorPhone = isd + zDetails.creator.phone;
+            }
+            var phoneToStore = riderPhone || creatorPhone || null;
+
         } else {
             // Default/Swiggy (Assumed Flat)
             externalId = rawOrder.id;
@@ -111,6 +145,8 @@ class OnlineOrderService {
             totalAmount = rawOrder.details?.order_total || 0;
             taxAmount = rawOrder.details?.taxes || 0;
             customerName = rawOrder.customer?.name || 'Online Customer';
+            var specialInstructions = rawOrder.instructions || '';
+            var phoneToStore = rawOrder.customer?.phone || '';
         }
 
         // Identify Restaurant (Support CSV IDs)
@@ -163,11 +199,12 @@ class OnlineOrderService {
             restaurantId: restaurant.restaurant_id,
             tableId: null,
             customerName: customerName,
-            customerPhone: null, 
+            customerPhone: phoneToStore, 
             subtotal: subtotal,
             taxAmount: taxAmount,
             totalAmount: totalAmount,
             appliedTaxRate: appliedRate,
+            specialInstructions: specialInstructions, // Added Special Instructions
             orderStatus: this.mapStatus(rawStatus),
             paymentStatus: 'Approved',
             orderType: 'online', 
