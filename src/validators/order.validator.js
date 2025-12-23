@@ -32,8 +32,20 @@ exports.createOrderValidator = [
 
   body('customerPhone')
     .optional()
-    .matches(/^[6-9]\d{9}$/)
-    .withMessage('Invalid phone number'),
+    .custom((value) => {
+      // Allow dummy number "0000000000" or empty string
+      if (value === '0000000000' || value === '') return true; 
+      // Strict check for real numbers
+      if (!/^[6-9]\d{9}$/.test(value)) {
+        throw new Error('Invalid phone number');
+      }
+      return true;
+    }),
+
+  body('restaurantId')
+    .optional()
+    .isInt()
+    .withMessage('Valid Restaurant ID is required'),
 
 // --- COMMENTED OUT FOR FUTURE USE ---
   /*

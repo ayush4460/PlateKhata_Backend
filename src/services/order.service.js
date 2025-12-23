@@ -21,7 +21,12 @@ class OrderService {
 
     if (table.is_available === false) {
       throw ApiError.badRequest('This table is disabled and cannot accept new orders.');
-}
+    }
+
+    // Verify Restaurant ID Match (Centralization Check)
+    if (orderData.restaurantId && String(orderData.restaurantId) !== String(table.restaurant_id)) {
+        throw ApiError.badRequest(`Table ${tableId} does not belong to restaurant ${orderData.restaurantId}`);
+    }
 
     // Validate or Create Session
     let session = null;

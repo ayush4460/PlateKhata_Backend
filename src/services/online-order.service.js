@@ -158,7 +158,7 @@ class OnlineOrderService {
         });
 
         if (restaurant) {
-             console.log(`[OnlineOrderService] Matched Restaurant: ${restaurant.restaurant_name} (ID: ${restaurant.restaurant_id}) for External ResID: ${remoteResId}`);
+             console.log(`[OnlineOrderService] Matched Restaurant: ${restaurant.name} (ID: ${restaurant.restaurant_id}) for External ResID: ${remoteResId}`);
         }
 
         if (!restaurant) {
