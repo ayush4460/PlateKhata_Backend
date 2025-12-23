@@ -23,9 +23,20 @@ class MenuModel {
     // Keep is_vegetarian for backward compatibility (synced with type)
     const finalIsVegetarian = finalDietaryType === 'veg';
 
+    // Fetch category name if not provided (Legacy support + DB Constraint)
+    let categoryName = itemData.category;
+    if (!categoryName && categoryId) {
+      const catRes = await db.query('SELECT name FROM categories WHERE category_id = $1', [categoryId]);
+      if (catRes.rows.length > 0) {
+        categoryName = catRes.rows[0].name;
+      }
+    }
+    // Fallback to satisfy NOT NULL constraint
+    if (!categoryName) categoryName = 'Uncategorized';
+
     const query = `
-      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, dietary_type, preparation_time, restaurant_id, has_spice_levels)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO menu_items (name, description, category_id, price, image_url, is_vegetarian, dietary_type, preparation_time, restaurant_id, has_spice_levels, category)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
 
@@ -40,6 +51,7 @@ class MenuModel {
       preparationTime,
       restaurantId,
       hasSpiceLevels,
+      categoryName
     ]);
 
     return result.rows[0];
