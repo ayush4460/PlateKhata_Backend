@@ -56,7 +56,9 @@ const config = {
   },
 
   // Frontend
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:9002',
+  frontendUrl: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
+    ? 'https://munch-mate-frontend.vercel.app' 
+    : 'http://localhost:3000'),
 };
 
 // Validate required environment variables
