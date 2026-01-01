@@ -34,11 +34,14 @@ class OrderService {
         const s = await SessionService.validateSession(sessionToken);
 
         if (s) {
-          const now = new Date();
+          const now = Date.now();
+          const notExpired = !s.expires_at || Number(s.expires_at) > now;
 
-          const notExpired = !s.expires_at || new Date(s.expires_at) > now;
-
-          if (s.is_active && notExpired) {
+          // Validate Table ID match to prevent cross-table session merging
+          if (String(s.table_id) !== String(tableId)) {
+             console.log(`[OrderService] Session table mismatch. SessionTable: ${s.table_id}, ReqTable: ${tableId}. Ignoring session.`);
+             session = null;
+          } else if (s.is_active && notExpired) {
             session = s;
           } else {
             console.log('[OrderService] Ignoring inactive/expired session for new order:', s.session_id);
@@ -333,7 +336,7 @@ class OrderService {
       const client = await db.pool.connect();
       try {
         await client.query(
-          `UPDATE orders SET payment_status = 'Approved', order_status = 'completed', updated_at = NOW()
+          `UPDATE orders SET payment_status = 'Approved', order_status = 'completed', updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
             WHERE session_id = $1 AND order_id != $2`,
           [order.session_id, orderId]
         );

@@ -10,7 +10,7 @@ class SessionService {
             `SELECT * FROM sessions
                 WHERE table_id = $1
                 AND is_active = TRUE
-                AND (expires_at IS NULL OR expires_at > NOW())
+                AND (expires_at IS NULL OR expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
                 ORDER BY created_at DESC
                 LIMIT 1`,
             [tableId]
@@ -34,7 +34,7 @@ class SessionService {
                     WHERE session_id = $1
                     AND order_status = 'completed'
                     AND payment_status = 'Approved'
-                    AND updated_at > NOW() - INTERVAL '10 minutes'
+                    AND updated_at > ((EXTRACT(EPOCH FROM NOW()) - 600) * 1000)::BIGINT
                     LIMIT 1`,
                 [session.session_id]
             );
@@ -50,7 +50,7 @@ class SessionService {
 
         // Create a fresh session
         const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 0.75 * 60 * 60 * 1000);
+        const expiresAt = Date.now() + (0.75 * 60 * 60 * 1000); // 45 mins in ms
 
         const newSession = await db.query(
             `INSERT INTO sessions (table_id, session_token, expires_at, is_active)
@@ -70,9 +70,9 @@ class SessionService {
         if (rows.length === 0) return null;
 
         const s = rows[0];
-        const now = new Date();
+        const now = Date.now();
 
-        if (s.expires_at && new Date(s.expires_at) <= now) {
+        if (s.expires_at && Number(s.expires_at) <= now) {
             return null;
         }
 
@@ -116,14 +116,14 @@ class SessionService {
      * Set grace period for session (called after payment approval)
      */
     static async setGracePeriod(sessionId, minutes = 10) {
-        const expiryTime = new Date(Date.now() + minutes * 60 * 1000);
+        const expiryTime = Date.now() + (minutes * 60 * 1000);
         await db.query(
             `UPDATE sessions
                 SET expires_at = $1, is_active = false
                 WHERE session_id = $2`,
             [expiryTime, sessionId]
         );
-        console.log(`[SessionService] Grace period set for session ${sessionId} until ${expiryTime.toISOString()}`);
+        console.log(`[SessionService] Grace period set for session ${sessionId} until ${expiryTime}`);
     }
 }
 

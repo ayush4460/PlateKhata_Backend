@@ -90,49 +90,67 @@ class OrderModel {
   /**
    * Generate unique order number
    */
+  /**
+   * Generate unique order number
+   */
   static async generateOrderNumber(client) {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const datePrefix = `${year}${month}${day}`;
+    // Current Epoch
+    const nowEpoch = Date.now();
+    
+    // Convert Epoch to IST Date string to extract YYYYMMDD
+    // IST is UTC+5:30. 
+    // We can use Intl.DateTimeFormat to get parts in 'Asia/Kolkata'
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    // formatter.format(new Date(nowEpoch)) -> "MM/DD/YYYY"
+    const parts = formatter.formatToParts(new Date(nowEpoch));
+    const year = parts.find(p => p.type === 'year').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const day = parts.find(p => p.type === 'day').value;
+    
+    const datePrefix = `${year}${month}${day}`;
 
-  const query = `
-    SELECT order_number
-    FROM orders
-    WHERE order_number LIKE $1
-    ORDER BY order_number DESC
-    LIMIT 1
-  `;
+    const query = `
+      SELECT order_number
+      FROM orders
+      WHERE order_number LIKE $1
+      ORDER BY order_number DESC
+      LIMIT 1
+    `;
 
-  try {
-    const result = await client.query(query, [`${datePrefix}%`]);
+    try {
+      const result = await client.query(query, [`${datePrefix}%`]);
 
-    let sequenceNum = 1;
-    if (result.rows.length > 0) {
-      const lastOrderNumber = result.rows[0].order_number;
-      const lastSequence = parseInt(lastOrderNumber.slice(-4), 10);
-      if (!isNaN(lastSequence)) {
-        sequenceNum = lastSequence + 1;
+      let sequenceNum = 1;
+      if (result.rows.length > 0) {
+        const lastOrderNumber = result.rows[0].order_number;
+        const lastSequence = parseInt(lastOrderNumber.slice(-4), 10);
+        if (!isNaN(lastSequence)) {
+          sequenceNum = lastSequence + 1;
+        }
       }
+
+      // Add safety check for sequence overflow
+      if (sequenceNum > 9999) {
+        console.warn('[OrderModel] Sequence exceeded 9999, using timestamp fallback');
+        const timestamp = Date.now().toString().slice(-4);
+        sequenceNum = parseInt(timestamp, 10);
+      }
+
+      const orderNumber = `${datePrefix}${String(sequenceNum).padStart(4, '0')}`;
+      return orderNumber;
+
+    } catch (error) {
+      console.error('[OrderModel] Error generating order number:', error);
+      const timestamp = Date.now().toString().slice(-6);
+      return `${datePrefix}${timestamp.slice(-4)}`;
     }
-
-    // Add safety check for sequence overflow
-    if (sequenceNum > 9999) {
-      console.warn('[OrderModel] Sequence exceeded 9999, using timestamp fallback');
-      const timestamp = Date.now().toString().slice(-4);
-      sequenceNum = parseInt(timestamp, 10);
-    }
-
-    const orderNumber = `${datePrefix}${String(sequenceNum).padStart(4, '0')}`;
-    return orderNumber;
-
-  } catch (error) {
-    console.error('[OrderModel] Error generating order number:', error);
-    const timestamp = Date.now().toString().slice(-6);
-    return `${datePrefix}${timestamp.slice(-4)}`;
   }
-}
 
   /**
    * Create order items
@@ -226,23 +244,43 @@ class OrderModel {
       }
     }
 
-    // Date filter (Exact Match)
+    // Date filter (Exact Match - IST "Day")
     if (filters.date) {
-      query += ` AND DATE(o.created_at) = $${paramCount++}`;
-      params.push(filters.date);
-      //console.log('[DEBUG MODEL findAll] Added date filter:', filters.date);
+        // Input: "YYYY-MM-DD"
+        // Need to convert this IST day to Start/End Epochs
+        
+        // Helper to get UTCOffset independent timestamp for start of day IST
+        const getISTEpochRange = (dateStr) => {
+             // Create date string in specific format for parsing "YYYY-MM-DDT00:00:00+05:30"
+             const startISO = `${dateStr}T00:00:00.000+05:30`;
+             const endISO = `${dateStr}T23:59:59.999+05:30`;
+             return {
+                 start: new Date(startISO).getTime(),
+                 end: new Date(endISO).getTime()
+             };
+        };
+
+        const { start, end } = getISTEpochRange(filters.date);
+        
+        query += ` AND o.created_at >= $${paramCount++} AND o.created_at <= $${paramCount++}`;
+        params.push(start);
+        params.push(end);
     }
 
     // Date Range Filter (Start Date)
     if (filters.startDate) {
-        query += ` AND DATE(o.created_at) >= $${paramCount++}`;
-        params.push(filters.startDate);
+        const startISO = `${filters.startDate}T00:00:00.000+05:30`;
+        const startEpoch = new Date(startISO).getTime();
+        query += ` AND o.created_at >= $${paramCount++}`;
+        params.push(startEpoch);
     }
 
     // Date Range Filter (End Date)
     if (filters.endDate) {
-        query += ` AND DATE(o.created_at) <= $${paramCount++}`;
-        params.push(filters.endDate);
+        const endISO = `${filters.endDate}T23:59:59.999+05:30`;
+        const endEpoch = new Date(endISO).getTime();
+        query += ` AND o.created_at <= $${paramCount++}`;
+        params.push(endEpoch);
     }
 
     // Restaurant filter
@@ -308,7 +346,7 @@ class OrderModel {
   static async updateStatus(orderId, status) {
     const query = `
       UPDATE orders
-      SET order_status = $1, updated_at = CURRENT_TIMESTAMP
+      SET order_status = $1, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE order_id = $2
       RETURNING *
     `;
@@ -323,7 +361,7 @@ class OrderModel {
   static async updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod) {
     const query = `
       UPDATE orders 
-      SET payment_status = $1, payment_method = $2, updated_at = CURRENT_TIMESTAMP 
+      SET payment_status = $1, payment_method = $2, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE order_id = $3 
       RETURNING *
     `;
@@ -337,7 +375,7 @@ class OrderModel {
   static async updatePaymentStatusOnly(orderId, paymentStatus) {
     const query = `
       UPDATE orders
-      SET payment_status = $1, updated_at = CURRENT_TIMESTAMP
+      SET payment_status = $1, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE order_id = $2
       RETURNING *
     `;
@@ -348,7 +386,7 @@ class OrderModel {
   static async updateSessionPaymentStatusWithMethod(sessionId, paymentStatus, paymentMethod) {
     const query = `
       UPDATE orders
-      SET payment_status = $1, payment_method = $2, updated_at = CURRENT_TIMESTAMP
+      SET payment_status = $1, payment_method = $2, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE session_id = $3 AND order_status NOT IN ('cancelled')
       RETURNING *
     `;
@@ -359,7 +397,7 @@ class OrderModel {
   static async updateSessionPaymentStatusOnly(sessionId, paymentStatus) {
     const query = `
       UPDATE orders
-      SET payment_status = $1, updated_at = CURRENT_TIMESTAMP
+      SET payment_status = $1, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE session_id = $2 AND order_status NOT IN ('cancelled')
       RETURNING *
     `;
@@ -373,7 +411,7 @@ class OrderModel {
   static async updatePaymentAndOrderState(orderId, paymentStatus, orderStatus, paymentMethod) {
     const query = `
       UPDATE orders
-      SET payment_status = $1, order_status = $2, payment_method = COALESCE($3, payment_method), updated_at = CURRENT_TIMESTAMP
+      SET payment_status = $1, order_status = $2, payment_method = COALESCE($3, payment_method), updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE order_id = $4
       RETURNING *
     `;
@@ -387,7 +425,7 @@ class OrderModel {
   static async updateSessionPaymentAndOrderState(sessionId, paymentStatus, orderStatus, paymentMethod) {
     const query = `
       UPDATE orders
-      SET payment_status = $1, order_status = $2, payment_method = COALESCE($3, payment_method), updated_at = CURRENT_TIMESTAMP
+      SET payment_status = $1, order_status = $2, payment_method = COALESCE($3, payment_method), updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE session_id = $4 AND order_status NOT IN ('cancelled')
       RETURNING *
     `;
@@ -432,7 +470,7 @@ class OrderModel {
   static async cancel(orderId) {
     const query = `
       UPDATE orders
-      SET order_status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      SET order_status = 'cancelled', updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE order_id = $1 AND order_status IN ('pending', 'confirmed')
       RETURNING *
     `;

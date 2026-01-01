@@ -125,7 +125,7 @@ class UserModel {
       paramCount++;
     }
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
+    fields.push('updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT');
 
     params.push(userId);
 
@@ -146,7 +146,7 @@ class UserModel {
   static async delete(userId) {
     const query = `
       UPDATE users
-      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      SET is_active = false, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       WHERE user_id = $1
       RETURNING user_id
     `;

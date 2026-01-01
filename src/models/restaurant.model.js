@@ -101,6 +101,7 @@ class RestaurantModel {
     });
 
     values.push(restaurantId);
+    sets.push(`updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT`);
     const query = `UPDATE restaurants SET ${sets.join(', ')} WHERE restaurant_id = $${i} RETURNING *`;
     
     const result = await db.query(query, values);

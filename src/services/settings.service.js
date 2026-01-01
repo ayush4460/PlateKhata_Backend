@@ -22,11 +22,11 @@ class SettingsService {
         // but ensuring restaurant_id is part of the row.
         const query = `
             INSERT INTO settings (restaurant_id, setting_key, setting_value, updated_at)
-            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
             ON CONFLICT (setting_key) DO UPDATE SET
             setting_value = EXCLUDED.setting_value,
             restaurant_id = EXCLUDED.restaurant_id, 
-            updated_at = CURRENT_TIMESTAMP;
+            updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
         `;
         try {
             await db.query(query, [restaurantId, key, String(value)]); 

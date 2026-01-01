@@ -198,7 +198,7 @@ class MenuModel {
       throw new Error('No valid fields to update');
     }
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
+    fields.push('updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT');
     params.push(itemId);
 
     const query = `

@@ -82,7 +82,7 @@ class TableModel {
       paramCount++;
     }
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
+    fields.push('updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT');
     if (fields.length === 0) return null;
 
     const query = `
