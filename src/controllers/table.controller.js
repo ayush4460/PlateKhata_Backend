@@ -137,6 +137,23 @@ class TableController {
     const tables = await TableModel.getAvailableTables(restaurantId);
     return ApiResponse.success(res, tables);
   });
+
+  /**
+   * Move table session
+   * POST /api/v1/tables/move
+   */
+  static moveTable = catchAsync(async (req, res) => {
+    const { sourceTableId, targetTableId } = req.body;
+    const restaurantId = req.user.restaurantId;
+
+    if (!sourceTableId || !targetTableId) {
+      throw ApiError.badRequest('Source and target table IDs are required');
+    }
+
+    await TableService.moveTable(sourceTableId, targetTableId, restaurantId);
+
+    return ApiResponse.success(res, null, 'Table moved successfully');
+  });
 }
 
 module.exports = TableController;

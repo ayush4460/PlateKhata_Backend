@@ -84,4 +84,16 @@ router.delete(
   TableController.deleteTable
 );
 
+router.post(
+  '/move',
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.WAITER),
+  [
+    body('sourceTableId').isInt().withMessage('Invalid source table ID'),
+    body('targetTableId').isInt().withMessage('Invalid target table ID'),
+  ],
+  validate,
+  TableController.moveTable
+);
+
 module.exports = router;
