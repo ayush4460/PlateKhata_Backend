@@ -102,6 +102,20 @@ class TableService {
         if (!table) {
         throw ApiError.notFound('Table not found');
         }
+
+        // NEW: Complete all active active/pending orders for this table before clearing
+        // We update based on table_id to be robust against session states
+        const db = require('../config/database');
+        
+        console.log(`[TableService] clearTable: Completing orders for table ${id}`);
+        
+        await db.query(
+            `UPDATE orders 
+                SET order_status = 'completed', updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+                WHERE table_id = $1 AND order_status NOT IN ('cancelled', 'completed')`,
+            [id]
+        );
+
         return await SessionService.clearTable(id);
     }
 

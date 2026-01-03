@@ -331,14 +331,16 @@ class OrderService {
     if (!order) throw ApiError.notFound('Order not found');
 
     if (order.session_id && paymentStatus === 'Approved') {
-      await OrderModel.updatePaymentAndOrderState(orderId, paymentStatus, 'completed');
+      // CHANGED: Use WithMethod to persist payment method (Cash/UPI)
+      await OrderModel.updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod);
 
       const client = await db.pool.connect();
       try {
+        // CHANGED: Update all other orders in session to Approved AND set payment_method
         await client.query(
-          `UPDATE orders SET payment_status = 'Approved', order_status = 'completed', updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+          `UPDATE orders SET payment_status = 'Approved', payment_method = $3, updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
             WHERE session_id = $1 AND order_id != $2`,
-          [order.session_id, orderId]
+          [order.session_id, orderId, paymentMethod]
         );
       } finally { client.release(); }
 
@@ -355,7 +357,8 @@ class OrderService {
       if (remainingActiveRes.rows.length === 0) {
         try {
           // Set grace period for receipt download
-          await SessionService.setGracePeriod(order.session_id, 10);
+          // CHANGED: Do NOT set grace period (which deactivates session). Keep session active for Paid & Occupied status.
+          // await SessionService.setGracePeriod(order.session_id, 10);
         } catch (err) {
           console.error(`[OrderService] Failed to set grace period: ${order.session_id}`, err);
         }
@@ -370,7 +373,9 @@ class OrderService {
       // Update ALL orders in the session
       let updatedOrders;
       if (paymentStatus === 'Approved') {
-        updatedOrders = await OrderModel.updateSessionPaymentAndOrderState(sessionId, paymentStatus, 'completed', paymentMethod);
+        // CHANGED: Only update payment status, do NOT complete orders yet
+        // ALSO: Pass paymentMethod
+        updatedOrders = await OrderModel.updateSessionPaymentStatusWithMethod(sessionId, paymentStatus, paymentMethod);
       } else if (paymentStatus === 'Requested') {
         updatedOrders = await OrderModel.updateSessionPaymentStatusWithMethod(sessionId, paymentStatus, paymentMethod);
       } else {
@@ -381,7 +386,8 @@ class OrderService {
     } else {
         // Fallback for orders without session_id (legacy/edge case)
         if (paymentStatus === 'Approved') {
-            return await OrderModel.updatePaymentAndOrderState(orderId, paymentStatus, 'completed', paymentMethod);
+            // CHANGED: Do active update
+             return await OrderModel.updatePaymentStatusOnly(orderId, paymentStatus);
         } else if (paymentStatus === 'Requested') {
             return await OrderModel.updatePaymentStatusWithMethod(orderId, paymentStatus, paymentMethod);
         } else {
