@@ -94,6 +94,11 @@ class SettingsService {
             if (data.zomatoRestaurantId) updatePayload.zomatoRestaurantId = data.zomatoRestaurantId;
             if (data.swiggyRestaurantId) updatePayload.swiggyRestaurantId = data.swiggyRestaurantId;
 
+            // New fields
+            if (data.contactNumber) updatePayload.contactNumber = data.contactNumber;
+            if (data.fssaiLicNo) updatePayload.fssaiLicNo = data.fssaiLicNo;
+            if (data.gstin) updatePayload.gstin = data.gstin;
+
             const updatedRestaurant = await RestaurantModel.update(restaurantId, updatePayload);
             return updatedRestaurant;
         } catch (error) {

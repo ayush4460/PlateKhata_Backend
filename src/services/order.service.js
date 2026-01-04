@@ -493,11 +493,37 @@ class OrderService {
   static async getOrderStats(filters = {}) {
     const orders = await OrderModel.findAll(filters);
     const stats = { totalOrders: 0, totalRevenue: 0, statusBreakdown: {}, averageOrderValue: 0 };
+    
     if (!orders || orders.length === 0) return stats;
-    stats.totalOrders = orders.length;
+
+    // Calculate Total Revenue
     stats.totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
-    orders.forEach((order) => { stats.statusBreakdown[order.order_status] = (stats.statusBreakdown[order.order_status] || 0) + 1; });
-    if (orders.length > 0) { stats.averageOrderValue = stats.totalRevenue / stats.length; }
+
+    // Calculate Unique Orders (Grouping by Session)
+    const uniqueSessions = new Set();
+    let nonSessionOrderCount = 0;
+
+    orders.forEach((order) => {
+      // Status Breakdown (count each sub-order or session? User didn't specify, but typically breakdown is by sub-order status)
+      // If a session has one 'Served' and one 'Pending', how do we count? 
+      // Current implementation counts sub-orders for breakdown, which is arguably correct for operational status.
+      // But for "New Orders" count (Business Metric), we want Sessions.
+      stats.statusBreakdown[order.order_status] = (stats.statusBreakdown[order.order_status] || 0) + 1;
+
+      if (order.session_id) {
+        uniqueSessions.add(order.session_id);
+      } else {
+        nonSessionOrderCount++;
+      }
+    });
+
+    stats.totalOrders = uniqueSessions.size + nonSessionOrderCount;
+
+    // Fix Average Order Value (Revenue / Unique Sessions)
+    if (stats.totalOrders > 0) {
+      stats.averageOrderValue = stats.totalRevenue / stats.totalOrders;
+    }
+
     return stats;
   }
 

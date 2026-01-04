@@ -86,7 +86,10 @@ class RestaurantModel {
         contactEmail: 'contact_email',
         isActive: 'is_active',
         slug: 'slug',
-        tagline: 'tagline'
+        tagline: 'tagline',
+        contactNumber: 'contact_number',
+        fssaiLicNo: 'fssai_lic_no',
+        gstin: 'gstin'
     };
 
     const sets = [];

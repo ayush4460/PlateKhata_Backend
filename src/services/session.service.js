@@ -23,7 +23,6 @@ class SessionService {
                 `SELECT 1 FROM orders
                     WHERE session_id = $1
                     AND order_status NOT IN ('completed', 'cancelled')
-                    AND payment_status != 'Approved'
                     LIMIT 1`,
                 [session.session_id]
             );
