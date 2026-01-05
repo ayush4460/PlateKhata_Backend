@@ -512,41 +512,6 @@ class OrderModel {
     const result = await db.query(query, params);
     return result.rows;
   }
-
-  /**
-   * Get revenue series for graph
-   */
-  static async getRevenueSeries(filters = {}) {
-    let query = `
-      SELECT 
-        (EXTRACT(EPOCH FROM date_trunc('day', to_timestamp(o.created_at / 1000) AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')) * 1000)::BIGINT as date,
-        SUM(o.total_amount) as revenue
-      FROM orders o
-      WHERE o.order_status NOT IN ('cancelled')
-    `;
-    const params = [];
-    let paramCount = 1;
-
-    if (filters.restaurantId) {
-      query += ` AND o.restaurant_id = $${paramCount++}`;
-      params.push(filters.restaurantId);
-    }
-
-    if (filters.startDate) {
-      query += ` AND o.created_at >= $${paramCount++}`;
-      params.push(filters.startDate);
-    }
-
-    if (filters.endDate) {
-      query += ` AND o.created_at <= $${paramCount++}`;
-      params.push(filters.endDate);
-    }
-
-    query += ` GROUP BY 1 ORDER BY 1 ASC`;
-
-    const result = await db.query(query, params);
-    return result.rows;
-  }
 }
 
 module.exports = OrderModel;

@@ -644,20 +644,16 @@ class OrderService {
       limit: 5
     });
 
-    // 4. Revenue Series for custom ranges
-    const revenueSeries = await OrderModel.getRevenueSeries({
-      restaurantId,
-      startDate,
-      endDate
-    });
+    // 4. Revenue Series logic removed as per request
+    // const revenueSeries = ...
 
     return {
       topSelling: {
         today: topToday,
         week: topWeek,
         month: topMonth
-      },
-      revenueSeries
+      }
+      // revenueSeries removed
     };
   }
 }
