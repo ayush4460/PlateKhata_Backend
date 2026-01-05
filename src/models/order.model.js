@@ -479,11 +479,73 @@ class OrderModel {
   }
 
   /**
-   * Delete orders by table ID (used when deleting a table)
+   * Get top selling items from order_items
    */
-  static async deleteByTableId(tableId) {
-    const query = 'DELETE FROM orders WHERE table_id = $1';
-    await db.query(query, [tableId]);
+  static async getTopSellingItems(filters = {}) {
+    let query = `
+      SELECT oi.item_id, oi.item_name, SUM(oi.quantity) as total_quantity, SUM(oi.total_price) as total_revenue
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.order_id
+      WHERE o.order_status NOT IN ('cancelled')
+    `;
+    const params = [];
+    let paramCount = 1;
+
+    if (filters.restaurantId) {
+      query += ` AND o.restaurant_id = $${paramCount++}`;
+      params.push(filters.restaurantId);
+    }
+
+    if (filters.startDate) {
+      query += ` AND o.created_at >= $${paramCount++}`;
+      params.push(filters.startDate);
+    }
+
+    if (filters.endDate) {
+      query += ` AND o.created_at <= $${paramCount++}`;
+      params.push(filters.endDate);
+    }
+
+    query += ` GROUP BY oi.item_id, oi.item_name ORDER BY total_revenue DESC LIMIT $${paramCount++}`;
+    params.push(filters.limit || 5);
+
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  /**
+   * Get revenue series for graph
+   */
+  static async getRevenueSeries(filters = {}) {
+    let query = `
+      SELECT 
+        (EXTRACT(EPOCH FROM date_trunc('day', to_timestamp(o.created_at / 1000) AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')) * 1000)::BIGINT as date,
+        SUM(o.total_amount) as revenue
+      FROM orders o
+      WHERE o.order_status NOT IN ('cancelled')
+    `;
+    const params = [];
+    let paramCount = 1;
+
+    if (filters.restaurantId) {
+      query += ` AND o.restaurant_id = $${paramCount++}`;
+      params.push(filters.restaurantId);
+    }
+
+    if (filters.startDate) {
+      query += ` AND o.created_at >= $${paramCount++}`;
+      params.push(filters.startDate);
+    }
+
+    if (filters.endDate) {
+      query += ` AND o.created_at <= $${paramCount++}`;
+      params.push(filters.endDate);
+    }
+
+    query += ` GROUP BY 1 ORDER BY 1 ASC`;
+
+    const result = await db.query(query, params);
+    return result.rows;
   }
 }
 

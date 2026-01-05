@@ -591,6 +591,75 @@ class OrderService {
       client.release();
     }
   }
+  /**
+   * Get advanced analytics data
+   */
+  static async getAdvancedAnalytics(filters = {}) {
+    const { restaurantId, startDate, endDate } = filters;
+
+    // 1. Top Selling Today (IST)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    // Convert to IST offset if needed, but here we assume the input is already handled or we use DB comparison
+    // Let's use the same logic as elsewhere for IST start of day
+    const getISTStartOfToday = () => {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+        const [{ value: m }, , { value: d }, , { value: y }] = formatter.formatToParts(now);
+        return new Date(`${y}-${m}-${d}T00:00:00.000+05:30`).getTime();
+    };
+
+    const istTodayStart = getISTStartOfToday();
+    const topToday = await OrderModel.getTopSellingItems({
+      restaurantId,
+      startDate: istTodayStart,
+      limit: 5
+    });
+
+    // 2. Top Selling Previous Week (Last 7 days)
+    const weekStart = istTodayStart - (7 * 24 * 60 * 60 * 1000);
+    const topWeek = await OrderModel.getTopSellingItems({
+      restaurantId,
+      startDate: weekStart,
+      limit: 5
+    });
+
+    // 3. Top Selling Month (From 1st of current month IST)
+    const getISTStartOfMonth = () => {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric', month: '2-digit'
+        });
+        const [{ value: m }, , { value: y }] = formatter.formatToParts(now);
+        return new Date(`${y}-${m}-01T00:00:00.000+05:30`).getTime();
+    };
+    const istMonthStart = getISTStartOfMonth();
+    const topMonth = await OrderModel.getTopSellingItems({
+      restaurantId,
+      startDate: istMonthStart,
+      limit: 5
+    });
+
+    // 4. Revenue Series for custom ranges
+    const revenueSeries = await OrderModel.getRevenueSeries({
+      restaurantId,
+      startDate,
+      endDate
+    });
+
+    return {
+      topSelling: {
+        today: topToday,
+        week: topWeek,
+        month: topMonth
+      },
+      revenueSeries
+    };
+  }
 }
 
 module.exports = OrderService;

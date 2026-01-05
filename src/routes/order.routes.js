@@ -40,6 +40,13 @@ router.get(
   OrderController.getOrderStats
 );
 
+router.get(
+  '/analytics/advanced',
+  authenticate,
+  authorize(ROLES.ADMIN),
+  OrderController.getAdvancedAnalytics
+);
+
 router.get('/:id', optionalAuth, OrderController.getOrderById);
 
 // Route for changing ORDER STATUS (e.g., pending -> preparing)

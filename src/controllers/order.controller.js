@@ -244,6 +244,23 @@ static getAllOrders = catchAsync(async (req, res) => {
     
     return ApiResponse.success(res, result, 'Session total updated successfully');
   });
+
+  /**
+   * Get advanced analytics data
+   * GET /api/v1/orders/analytics/advanced
+   */
+  static getAdvancedAnalytics = catchAsync(async (req, res) => {
+    const { startDate, endDate } = req.query;
+    const restaurantId = req.user.restaurantId;
+
+    const analytics = await OrderService.getAdvancedAnalytics({
+      restaurantId,
+      startDate: startDate ? parseInt(startDate) : undefined,
+      endDate: endDate ? parseInt(endDate) : undefined
+    });
+
+    return ApiResponse.success(res, analytics);
+  });
 }
 
 module.exports = OrderController;
