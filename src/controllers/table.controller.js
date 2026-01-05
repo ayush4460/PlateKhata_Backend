@@ -154,6 +154,26 @@ class TableController {
 
     return ApiResponse.success(res, null, 'Table moved successfully');
   });
+  /**
+   * Update table customer details (for active session)
+   * PATCH /api/v1/tables/:id/customer
+   */
+  static updateCustomerDetails = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { customerName, customerPhone } = req.body;
+    const restaurantId = req.user.restaurantId;
+
+    await TableService.updateCustomerDetails(id, customerName, customerPhone, restaurantId);
+
+    // Real-time update via SocketService
+    const socketService = require('../services/socket.service');
+    socketService.emitTableUpdate(id, restaurantId, {
+        customerName,
+        customerPhone
+    });
+
+    return ApiResponse.success(res, null, 'Customer details updated successfully');
+  });
 }
 
 module.exports = TableController;

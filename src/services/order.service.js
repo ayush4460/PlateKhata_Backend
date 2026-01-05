@@ -59,8 +59,8 @@ class OrderService {
     if (customerName && customerPhone) {
       await SessionService.updateCustomerDetails(session.session_id, customerName, customerPhone);
     } else {
-      fName = session.customer_name || 'Guest';
-      fPhone = session.customer_phone || '';
+      fName = session.customer_name || null;
+      fPhone = session.customer_phone || null;
     }
 
     // Determine if existing open order exists in session (addon vs regular)

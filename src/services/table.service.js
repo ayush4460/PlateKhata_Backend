@@ -220,6 +220,26 @@ class TableService {
             client.release();
         }
     }
+    /**
+     * Update customer details for active table session
+     */
+    static async updateCustomerDetails(tableId, name, phone, restaurantId) {
+        // 1. Verify table exists and belongs to restaurant
+        const table = await TableModel.findById(tableId);
+        if (!table || table.restaurant_id !== restaurantId) {
+            throw ApiError.notFound('Table not found or access denied');
+        }
+
+        // 2. Get active session
+        const session = await SessionService.getOrCreateSession(tableId);
+        if (!session) {
+             throw ApiError.badRequest('Could not create or retrieve session');
+        }
+
+        // 3. Update session details
+        await SessionService.updateCustomerDetails(session.session_id, name, phone);
+        return true;
+    }
 }
 
 module.exports = TableService;

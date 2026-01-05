@@ -27,11 +27,12 @@ exports.createOrderValidator = [
   body('customerName')
     .optional()
     .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Customer name must be between 2-100 characters'),
+    .escape(),
 
   body('customerPhone')
     .optional()
+    .trim()
+    .escape()
     .custom((value) => {
       // Allow dummy number "0000000000" or empty string
       if (value === '0000000000' || value === '') return true; 

@@ -96,4 +96,16 @@ router.post(
   TableController.moveTable
 );
 
+router.patch(
+  '/:id/customer',
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.WAITER),
+  [
+    body('customerName').optional().trim(),
+    body('customerPhone').optional().trim(),
+  ],
+  validate,
+  TableController.updateCustomerDetails
+);
+
 module.exports = router;

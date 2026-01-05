@@ -59,6 +59,18 @@ class SocketService {
         console.log('Kitchen staff joined:', socket.id);
       });
 
+      // Join Admin/Restaurant Room - RESTRICTED
+      socket.on('join:admin', () => {
+         // Allow any authenticated user with a restaurantId (admin, manager, staff, etc.)
+         if (!socket.user || !socket.user.restaurantId) {
+             console.warn('Unauthorized attempt to join admin room (no restaurantId):', socket.id);
+             return;
+         }
+         const roomName = `restaurant_${socket.user.restaurantId}`;
+         socket.join(roomName);
+         console.log(`User ${socket.user.userId} (${socket.user.role}) joined room ${roomName}:`, socket.id);
+      });
+
       // Join table room
       socket.on('join:table', (tableId) => {
         // Optional: Verify if user belongs to this table?
@@ -108,6 +120,31 @@ class SocketService {
   emitOrderComplete(orderId, tableId) {
     if (this.io) {
       this.io.to(`table:${tableId}`).emit('order:completed', { orderId });
+    }
+  }
+
+  /**
+   * Emit table details update (customer name/phone, status)
+   */
+  emitTableUpdate(tableId, restaurantId, data) {
+    if (this.io) {
+        // Emit to restaurant admin channel
+        this.io.to(`restaurant_${restaurantId}`).emit('table:update', {
+            tableId,
+            ...data
+        });
+
+        // Also emit order update to force refresh of order lists (legacy support)
+        this.io.to(`restaurant_${restaurantId}`).emit('order:statusUpdate', {
+             tableId,
+             status: 'info-update' // Pseudo-status to trigger refetch
+        });
+        
+        // Optional: Emit to specific table channel too (for customer device sync)
+        this.io.to(`table:${tableId}`).emit('table:update', {
+            tableId,
+            ...data
+        });
     }
   }
 

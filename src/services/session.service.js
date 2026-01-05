@@ -80,11 +80,22 @@ class SessionService {
 
 
     static async updateCustomerDetails(sessionId, name, phone) {
+        // Ensure phone is NULL if empty string to avoid check constraint violations
+        const safePhone = phone && phone.trim() !== '' ? phone : null;
+
         await db.query(
             `UPDATE sessions
             SET customer_name = $1, customer_phone = $2 
             WHERE session_id = $3`,
-            [name, phone, sessionId]
+            [name, safePhone, sessionId]
+        );
+
+        // Sync to orders for consistency
+        await db.query(
+            `UPDATE orders
+            SET customer_name = $1, customer_phone = $2
+            WHERE session_id = $3`,
+            [name, safePhone, sessionId]
         );
     }
 

@@ -24,7 +24,20 @@ class TableModel {
    * Get all tables for a restaurant
    */
   static async findAll(restaurantId) {
-    const query = 'SELECT * FROM tables WHERE restaurant_id = $1 ORDER BY table_number';
+    const query = `
+      SELECT t.*, 
+             s.session_id, s.customer_name, s.customer_phone,
+             s.is_active, s.created_at as session_start_time
+      FROM tables t
+      LEFT JOIN (
+          SELECT DISTINCT ON (table_id) *
+          FROM sessions
+          WHERE is_active = TRUE
+          ORDER BY table_id, created_at DESC
+      ) s ON t.table_id = s.table_id
+      WHERE t.restaurant_id = $1 
+      ORDER BY t.table_number
+    `;
     const result = await db.query(query, [restaurantId]);
     return result.rows;
   }
