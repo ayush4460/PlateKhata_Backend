@@ -49,33 +49,30 @@ class SessionService {
 
         // Create a fresh session
         const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = Date.now() + (0.75 * 60 * 60 * 1000); // 45 mins in ms
+        // expiresAt is handled in SQL to ensure consistency with DB clock
 
         const newSession = await client.query(
             `INSERT INTO sessions (table_id, session_token, expires_at, is_active)
-                VALUES ($1, $2, $3, TRUE)
+                VALUES ($1, $2, (EXTRACT(EPOCH FROM NOW() + INTERVAL '45 minutes') * 1000)::BIGINT, TRUE)
                 RETURNING *`,
-            [tableId, token, expiresAt]
+            [tableId, token]
         );
 
         return newSession.rows[0];
     }
 
     static async validateSession(token, client = db) {
+        // Check expiration in SQL to avoid clock skew
         const { rows } = await client.query(
-            `SELECT * FROM sessions WHERE session_token = $1 LIMIT 1`,
+            `SELECT * FROM sessions 
+             WHERE session_token = $1 
+             AND (expires_at IS NULL OR expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT)
+             LIMIT 1`,
             [token]
         );
         if (rows.length === 0) return null;
 
-        const s = rows[0];
-        const now = Date.now();
-
-        if (s.expires_at && Number(s.expires_at) <= now) {
-            return null;
-        }
-
-        return s;
+        return rows[0];
     }
 
 
