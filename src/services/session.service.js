@@ -19,38 +19,42 @@ class SessionService {
         if (existingRes.rows.length > 0) {
             const session = existingRes.rows[0];
 
-            const activeOrdersRes = await client.query(
-                `SELECT 1 FROM orders
-                    WHERE session_id = $1
-                    AND order_status NOT IN ('completed', 'cancelled')
-                    LIMIT 1`,
-                [session.session_id]
-            );
-
-            // Check if session has recently completed orders (grace period)
-            const recentCompletedRes = await client.query(
-                `SELECT 1 FROM orders
-                    WHERE session_id = $1
-                    AND order_status = 'completed'
-                    AND payment_status = 'Approved'
-                    AND updated_at > ((EXTRACT(EPOCH FROM NOW()) - 600) * 1000)::BIGINT
-                    LIMIT 1`,
-                [session.session_id]
-            );
-
-            // If session exists and has active orders OR recent completed orders, RETURN IT
-            if (activeOrdersRes.rows.length > 0 || recentCompletedRes.rows.length > 0) {
+            // 1. CONCURRENT ORDERS CHECK (Time Gap)
+            // If session was created very recently (e.g., < 30 seconds), it's likely part of a burst of requests.
+            // Trust it immediately to ensure all items in this burst get the same session.
+            // User requested 10s gap, using 30s as a safe buffer.
+            const sessionAgeMs = Date.now() - new Date(session.created_at).getTime();
+            if (sessionAgeMs < 30000) { 
+                console.log(`[SessionService] Reusing recent session ${session.session_id} (Age: ${sessionAgeMs}ms)`);
                 return session;
             }
 
-            // Otherwise expire it
+            // 2. EXISTING ORDERS CHECK (Running or Paid Status)
+            // Check if the session has any valid orders (Pending, Active, or Paid/Completed).
+            // We only filter out 'cancelled' to treat sessions with only cancelled orders as empty.
+            // This ensures "Paid & Occupied" tables can accept new Add-ons.
+            const hasOrdersRes = await client.query(
+                `SELECT 1 FROM orders
+                    WHERE session_id = $1
+                    AND order_status != 'cancelled'
+                    LIMIT 1`,
+                [session.session_id]
+            );
+
+            if (hasOrdersRes.rows.length > 0) {
+                // Session is occupied/used (Running or Paid)
+                return session;
+            }
+
+            // 3. EXPIRE STALE EMPTY SESSION
+            // If we are here, session is Old (>30s) AND Empty (No valid orders).
+            // It is likely a "ghost" session from an abandoned attempt.
+            console.log(`[SessionService] Expiring stale empty session ${session.session_id}`);
             await this.expireSession(session.session_id, client);
         }
 
         // Create a fresh session
         const token = crypto.randomBytes(32).toString('hex');
-        // expiresAt is handled in SQL to ensure consistency with DB clock
-
         const newSession = await client.query(
             `INSERT INTO sessions (table_id, session_token, expires_at, is_active)
                 VALUES ($1, $2, (EXTRACT(EPOCH FROM NOW() + INTERVAL '45 minutes') * 1000)::BIGINT, TRUE)
