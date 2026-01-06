@@ -11,6 +11,7 @@ const settingsRoutes = require('./settings.routes');
 const uploadRoutes = require('./upload.routes');
 const onlineOrderRoutes = require('./online-order.routes');
 const dynoWebhookRoutes = require('./dyno-webhook.routes');
+const emailRoutes = require('./email.routes');
 
 // Health check
 router.get('/', (req, res) => {
@@ -39,6 +40,7 @@ router.use('/online-orders', onlineOrderRoutes); // Online Orders (Manual Action
 router.use('/dyno', dynoWebhookRoutes); // Webhook Endpoints (Push/Poll)
 router.use('/uploads', uploadRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/email', emailRoutes);
 router.use('/public', require('./public.routes'));
 
 module.exports = router;

@@ -17,7 +17,8 @@ class SettingsController {
         tagline,
         contactNumber,
         fssaiLicNo,
-        gstin
+        gstin,
+        caEmail
     } = req.body;
     const { restaurantId } = req.user;
 
@@ -49,6 +50,7 @@ class SettingsController {
     if (contactNumber !== undefined) restaurantData.contactNumber = contactNumber;
     if (fssaiLicNo !== undefined) restaurantData.fssaiLicNo = fssaiLicNo;
     if (gstin !== undefined) restaurantData.gstin = gstin;
+    if (caEmail !== undefined) restaurantData.caEmail = caEmail;
 
     let updatedRestaurant = null;
     if (Object.keys(restaurantData).length > 0) {
@@ -108,7 +110,8 @@ class SettingsController {
         tagline: mainRest.tagline || '',
         contactNumber: mainRest.contact_number || '',
         fssaiLicNo: mainRest.fssai_lic_no || '',
-        gstin: mainRest.gstin || ''
+        gstin: mainRest.gstin || '',
+        caEmail: mainRest.ca_email || ''
       },
       'Settings fetched successfully.'
     );

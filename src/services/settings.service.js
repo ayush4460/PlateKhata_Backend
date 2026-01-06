@@ -98,6 +98,7 @@ class SettingsService {
             if (data.contactNumber) updatePayload.contactNumber = data.contactNumber;
             if (data.fssaiLicNo) updatePayload.fssaiLicNo = data.fssaiLicNo;
             if (data.gstin) updatePayload.gstin = data.gstin;
+            if (data.caEmail) updatePayload.caEmail = data.caEmail;
 
             const updatedRestaurant = await RestaurantModel.update(restaurantId, updatePayload);
             return updatedRestaurant;

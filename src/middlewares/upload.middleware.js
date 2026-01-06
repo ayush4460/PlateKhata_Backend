@@ -60,6 +60,11 @@ module.exports.uploadGeneral = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
+module.exports.uploadReport = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for reports
+});
+
 // Error handler for multer
 module.exports.handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {

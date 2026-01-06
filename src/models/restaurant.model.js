@@ -89,7 +89,8 @@ class RestaurantModel {
         tagline: 'tagline',
         contactNumber: 'contact_number',
         fssaiLicNo: 'fssai_lic_no',
-        gstin: 'gstin'
+        gstin: 'gstin',
+        caEmail: 'ca_email'
     };
 
     const sets = [];
