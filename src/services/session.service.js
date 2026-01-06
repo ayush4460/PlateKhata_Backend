@@ -4,9 +4,9 @@ const crypto = require('crypto');
 
 class SessionService {
 
-    static async getOrCreateSession(tableId) {
+    static async getOrCreateSession(tableId, client = db) {
         // Check for an active session
-        const existingRes = await db.query(
+        const existingRes = await client.query(
             `SELECT * FROM sessions
                 WHERE table_id = $1
                 AND is_active = TRUE
@@ -19,7 +19,7 @@ class SessionService {
         if (existingRes.rows.length > 0) {
             const session = existingRes.rows[0];
 
-            const activeOrdersRes = await db.query(
+            const activeOrdersRes = await client.query(
                 `SELECT 1 FROM orders
                     WHERE session_id = $1
                     AND order_status NOT IN ('completed', 'cancelled')
@@ -28,7 +28,7 @@ class SessionService {
             );
 
             // Check if session has recently completed orders (grace period)
-            const recentCompletedRes = await db.query(
+            const recentCompletedRes = await client.query(
                 `SELECT 1 FROM orders
                     WHERE session_id = $1
                     AND order_status = 'completed'
@@ -44,14 +44,14 @@ class SessionService {
             }
 
             // Otherwise expire it
-            await this.expireSession(session.session_id);
+            await this.expireSession(session.session_id, client);
         }
 
         // Create a fresh session
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = Date.now() + (0.75 * 60 * 60 * 1000); // 45 mins in ms
 
-        const newSession = await db.query(
+        const newSession = await client.query(
             `INSERT INTO sessions (table_id, session_token, expires_at, is_active)
                 VALUES ($1, $2, $3, TRUE)
                 RETURNING *`,
@@ -61,8 +61,8 @@ class SessionService {
         return newSession.rows[0];
     }
 
-    static async validateSession(token) {
-        const { rows } = await db.query(
+    static async validateSession(token, client = db) {
+        const { rows } = await client.query(
             `SELECT * FROM sessions WHERE session_token = $1 LIMIT 1`,
             [token]
         );
@@ -79,11 +79,11 @@ class SessionService {
     }
 
 
-    static async updateCustomerDetails(sessionId, name, phone) {
+    static async updateCustomerDetails(sessionId, name, phone, client = db) {
         // Ensure phone is NULL if empty string to avoid check constraint violations
         const safePhone = phone && phone.trim() !== '' ? phone : null;
 
-        await db.query(
+        await client.query(
             `UPDATE sessions
             SET customer_name = $1, customer_phone = $2 
             WHERE session_id = $3`,
@@ -91,7 +91,7 @@ class SessionService {
         );
 
         // Sync to orders for consistency
-        await db.query(
+        await client.query(
             `UPDATE orders
             SET customer_name = $1, customer_phone = $2
             WHERE session_id = $3`,
@@ -104,8 +104,8 @@ class SessionService {
         return res.rows[0];
     }
 
-    static async expireSession(sessionId) {
-        await db.query(
+    static async expireSession(sessionId, client = db) {
+        await client.query(
             `UPDATE sessions
                 SET is_active = FALSE
                 WHERE session_id = $1`,

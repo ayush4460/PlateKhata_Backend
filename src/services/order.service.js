@@ -15,65 +15,7 @@ class OrderService {
   static async createOrder(orderData) {
     const { tableId, items, customerName, customerPhone, specialInstructions, sessionToken } = orderData;
 
-    // Verify table exists
-    const table = await TableModel.findById(tableId);
-    if (!table) { throw ApiError.notFound('Table not found'); }
-
-    if (table.is_available === false) {
-      throw ApiError.badRequest('This table is disabled and cannot accept new orders.');
-    }
-
-    // Verify Restaurant ID Match (Centralization Check)
-    if (orderData.restaurantId && String(orderData.restaurantId) !== String(table.restaurant_id)) {
-        throw ApiError.badRequest(`Table ${tableId} does not belong to restaurant ${orderData.restaurantId}`);
-    }
-
-    // Validate or Create Session
-    let session = null;
-      if (sessionToken) {
-        const s = await SessionService.validateSession(sessionToken);
-
-        if (s) {
-          const now = Date.now();
-          const notExpired = !s.expires_at || Number(s.expires_at) > now;
-
-          // Validate Table ID match to prevent cross-table session merging
-          if (String(s.table_id) !== String(tableId)) {
-             console.log(`[OrderService] Session table mismatch. SessionTable: ${s.table_id}, ReqTable: ${tableId}. Ignoring session.`);
-             session = null;
-          } else if (s.is_active && notExpired) {
-            session = s;
-          } else {
-            console.log('[OrderService] Ignoring inactive/expired session for new order:', s.session_id);
-          }
-        }
-      }
-
-      if (!session) {
-        session = await SessionService.getOrCreateSession(tableId);
-      }
-
-
-    let fName = customerName;
-    let fPhone = customerPhone;
-    if (customerName && customerPhone) {
-      await SessionService.updateCustomerDetails(session.session_id, customerName, customerPhone);
-    } else {
-      fName = session.customer_name || null;
-      fPhone = session.customer_phone || null;
-    }
-
-    // Determine if existing open order exists in session (addon vs regular)
-    const existingOrders = await db.query(
-      `SELECT * FROM orders
-          WHERE session_id = $1
-            AND payment_status IN ('Pending', 'Requested', 'Failed')
-            AND order_status != 'cancelled'
-          LIMIT 1`,
-      [session.session_id]
-    );
-    const orderType = existingOrders.rows.length > 0 ? 'addon' : 'regular';
-
+    // 1. Initial Data Preparation & Validation (No DB Lock yet)
     // Default fallback for tax & discount
     let currentTaxRate = 0.00;
     let currentDiscountRate = 0.00;
@@ -91,7 +33,7 @@ class OrderService {
     let subtotal = 0;
     const orderItems = [];
 
-    // Validate all items first (before transaction)
+    // Validate all items first (Read Only - safe to do before lock)
     for (const item of items) {
       const menuItem = await MenuModel.findById(item.itemId);
       if (!menuItem) {
@@ -114,7 +56,7 @@ class OrderService {
         quantity: item.quantity,
         price: price,
         specialInstructions: item.specialInstructions || null,
-        spiceLevel: item.spiceLevel || item.spice_level || null, // Added mapping
+        spiceLevel: item.spiceLevel || item.spice_level || null,
       });
     }
 
@@ -122,51 +64,111 @@ class OrderService {
     const discountAmount = subtotal * currentDiscountRate;
     const totalAmount = subtotal + taxAmount - discountAmount;
 
-    // Start transaction
+    // 2. Start Transaction
     const client = await db.pool.connect();
-    let order = null;
     
     try {
-      await client.query('BEGIN');
-      console.log('[OrderService] Transaction started');
+        await client.query('BEGIN');
+        console.log('[OrderService] Transaction started');
 
-      // Create Order using transactional client
-      order = await OrderModel.create({
-        tableId,
-        customerName: fName,
-        customerPhone: fPhone,
-        subtotal: subtotal.toFixed(2),
-        taxAmount: taxAmount.toFixed(2),
-        discountAmount: 0,
-        totalAmount: totalAmount.toFixed(2),
-        appliedTaxRate: currentTaxRate,
-        specialInstructions,
-        orderStatus: 'pending',
-        paymentStatus: 'Pending',
-        orderType: orderType || 'regular',
-        sessionId: session.session_id,
-        restaurantId: table.restaurant_id
-      }, client);
+        // 3. Acquire Table Lock
+        // FOR UPDATE ensures no other transaction can process this table until we commit
+        const tableRes = await client.query('SELECT * FROM tables WHERE table_id = $1 FOR UPDATE', [tableId]);
+        
+        if (tableRes.rows.length === 0) { 
+            throw ApiError.notFound('Table not found'); 
+        }
+        const table = tableRes.rows[0];
 
-      console.log('[OrderService] Order created:', order.order_id);
+        if (table.is_available === false) {
+            throw ApiError.badRequest('This table is disabled and cannot accept new orders.');
+        }
 
-      // Insert items using the same client
-      await OrderModel.createOrderItems(order.order_id, orderItems, client);
-      console.log('[OrderService] Order items created');
+        // Verify Restaurant ID Match
+        if (orderData.restaurantId && String(orderData.restaurantId) !== String(table.restaurant_id)) {
+            throw ApiError.badRequest(`Table ${tableId} does not belong to restaurant ${orderData.restaurantId}`);
+        }
 
-      await client.query('COMMIT');
-      console.log('[OrderService] Transaction committed');
+        // 4. Validate or Create Session (WITH LOCK)
+        let session = null;
+        if (sessionToken) {
+            const s = await SessionService.validateSession(sessionToken, client);
 
-      // Fetch complete order with items
-      const completeOrder = await OrderModel.findById(order.order_id);
+            if (s) {
+                const now = Date.now();
+                const notExpired = !s.expires_at || Number(s.expires_at) > now;
 
-      // Return predictable object
-      return { order: completeOrder, session_token: session.session_token };
+                if (String(s.table_id) !== String(tableId)) {
+                    console.log(`[OrderService] Session table mismatch. SessionTable: ${s.table_id}, ReqTable: ${tableId}. Ignoring session.`);
+                    session = null;
+                } else if (s.is_active && notExpired) {
+                    session = s;
+                } else {
+                    console.log('[OrderService] Ignoring inactive/expired session for new order:', s.session_id);
+                }
+            }
+        }
+
+        if (!session) {
+            session = await SessionService.getOrCreateSession(tableId, client);
+        }
+
+        let fName = customerName;
+        let fPhone = customerPhone;
+        if (customerName && customerPhone) {
+            await SessionService.updateCustomerDetails(session.session_id, customerName, customerPhone, client);
+        } else {
+            fName = session.customer_name || null;
+            fPhone = session.customer_phone || null;
+        }
+
+        // 5. Determine order type (using client)
+        const existingOrders = await client.query(
+            `SELECT * FROM orders
+            WHERE session_id = $1
+                AND payment_status IN ('Pending', 'Requested', 'Failed')
+                AND order_status != 'cancelled'
+            LIMIT 1`,
+            [session.session_id]
+        );
+        const orderType = existingOrders.rows.length > 0 ? 'addon' : 'regular';
+
+        // 6. Create Order
+        let order = await OrderModel.create({
+            tableId,
+            customerName: fName,
+            customerPhone: fPhone,
+            subtotal: subtotal.toFixed(2),
+            taxAmount: taxAmount.toFixed(2),
+            discountAmount: 0,
+            totalAmount: totalAmount.toFixed(2),
+            appliedTaxRate: currentTaxRate,
+            specialInstructions,
+            orderStatus: 'pending',
+            paymentStatus: 'Pending',
+            orderType: orderType || 'regular',
+            sessionId: session.session_id,
+            restaurantId: table.restaurant_id
+        }, client);
+
+        console.log('[OrderService] Order created:', order.order_id);
+
+        // 7. Insert items
+        await OrderModel.createOrderItems(order.order_id, orderItems, client);
+        console.log('[OrderService] Order items created');
+
+        await client.query('COMMIT');
+        console.log('[OrderService] Transaction committed');
+
+        // Fetch complete order with items
+        const completeOrder = await OrderModel.findById(order.order_id);
+
+        // Return predictable object
+        return { order: completeOrder, session_token: session.session_token };
       
     } catch (error) {
       console.error('[OrderService] Transaction error:', error);
       
-      // Rollback transaction
       try {
         await client.query('ROLLBACK');
         console.log('[OrderService] Transaction rolled back');
