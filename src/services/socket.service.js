@@ -10,15 +10,25 @@ class SocketService {
    * Initialize Socket.IO
    */
   initializeSocket(server) {
+    const allowedOrigins = [
+      config.corsOrigin,
+      config.frontendUrl,
+      "https://platekhata.vercel.app",
+      "https://www.platekhata.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "http://localhost:9002",
+      "http://127.0.0.1:9002",
+    ].filter(Boolean);
+
+    // Remove duplicates
+    const uniqueOrigins = [...new Set(allowedOrigins)];
+
+    console.log('Socket.IO Allowed Origins:', uniqueOrigins);
+
     this.io = new Server(server, {
       cors: {
-        origin: [
-            config.corsOrigin, 
-            "http://localhost:9002", 
-            "http://localhost:3000",
-            "http://127.0.0.1:9002",
-            "*" // Temporary for debugging if needed, but array allows specific origins
-        ].filter(Boolean),
+        origin: uniqueOrigins,
         credentials: true,
         methods: ["GET", "POST"]
       },
