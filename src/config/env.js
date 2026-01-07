@@ -57,7 +57,7 @@ const config = {
 
   // Frontend
   frontendUrl: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
-    ? 'https://munch-mate-frontend.vercel.app' 
+    ? 'https://platekhata.vercel.app' 
     : 'http://localhost:3000'),
 };
 
