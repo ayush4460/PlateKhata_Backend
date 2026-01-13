@@ -130,7 +130,8 @@ class MenuModel {
     return result.rows.map(row => ({
         ...row,
         category: row.category_name || row.category,
-        customizationNames: row.customization_names || [] // Map to camelCase
+        customizationNames: row.customization_names || [], // Map to camelCase
+        customizationDetails: row.customization_details || [] // Expose full details
     }));
   }
 
