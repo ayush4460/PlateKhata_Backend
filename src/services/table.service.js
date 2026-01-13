@@ -34,14 +34,21 @@ class TableService {
             throw new Error('Could not determine Restaurant Slug or ID');
         }
 
-        const qrCodeUrl = await QRCodeService.generateTableQRCode(
-            table.table_id, 
-            table.table_number, 
-            finalSlug,
-            restaurant.restaurant_id
-        );
+        try {
+            const qrCodeUrl = await QRCodeService.generateTableQRCode(
+                table.table_id, 
+                table.table_number, 
+                finalSlug,
+                restaurant.restaurant_id
+            );
 
-        return await TableModel.update(table.table_id, { qrCodeUrl });
+            return await TableModel.update(table.table_id, { qrCodeUrl });
+        } catch (error) {
+            console.error('[TableService] QR Generation failed. Rolling back table creation.', error);
+            // Rollback: Delete the zombie table
+            await TableModel.delete(table.table_id);
+            throw new Error('Failed to generate QR code (Table creation rolled back). Please try again.');
+        }
     }
 
     static async getAllTables(restaurantId) {
