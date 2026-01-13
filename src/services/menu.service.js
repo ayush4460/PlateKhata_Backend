@@ -6,7 +6,26 @@ class MenuService {
    * Create menu item
    */
   static async createItem(itemData) {
-    return await MenuModel.create(itemData);
+    // Separate customizations from item data
+    const { customizationAssignments, ...menuItemData } = itemData;
+
+    // 1. Create Menu Item
+    const newItem = await MenuModel.create(menuItemData);
+
+    // 2. Handle Customization Assignments
+    if (customizationAssignments && Array.isArray(customizationAssignments) && customizationAssignments.length > 0) {
+        const CustomizationService = require('./customization.service');
+        
+        for (const assignment of customizationAssignments) {
+            await CustomizationService.assignToItem(
+                newItem.item_id, 
+                assignment.groupId, 
+                assignment.overrides || []
+            );
+        }
+    }
+
+    return newItem;
   }
 
   /**

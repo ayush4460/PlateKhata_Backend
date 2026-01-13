@@ -48,15 +48,58 @@ class OrderService {
         throw ApiError.internalError(`Invalid price for item ${item.itemId}`);
       }
 
-      subtotal += price * item.quantity;
+      // Calculate Customizations Price & Validate
+      let customizationTotal = 0;
+      const validCustomizations = [];
+
+      if (item.customizations && Array.isArray(item.customizations) && item.customizations.length > 0) {
+           // Fetch valid configuration for this item
+           // Optimization: we could cache or optimize this query but for now correctness first
+           const itemCustConfig = await require('../models/customization.model').getItemCustomizations(item.itemId);
+           
+           for (const cust of item.customizations) {
+               // item.customizations from frontend has { id, name, price, groupId }
+               // We need to verify 'cust.id' (option_id) is valid for this item
+               // Flatten options from groups
+               let foundOption = null;
+               
+               // Iterate groups to find the option
+               for (const group of itemCustConfig) {
+                   const opt = group.options.find(o => String(o.option_id) === String(cust.id));
+                   if (opt) {
+                       foundOption = opt;
+                       break;
+                   }
+               }
+
+               if (!foundOption) {
+                   console.warn(`[OrderService] Invalid customization option ${cust.id} for item ${item.itemId}. Ignoring.`);
+                   continue;
+               }
+
+               const optPrice = parseFloat(foundOption.price_modifier || 0);
+               customizationTotal += optPrice;
+               
+               validCustomizations.push({
+                   optionId: foundOption.option_id,
+                   price: optPrice,
+                   name: foundOption.name
+               });
+           }
+      }
+
+      const effectiveUnitPrice = price + customizationTotal;
+      subtotal += effectiveUnitPrice * item.quantity;
+
       orderItems.push({
         itemId: item.itemId,
         itemName: menuItem.name,
         itemCategory: menuItem.category,
         quantity: item.quantity,
-        price: price,
+        price: effectiveUnitPrice, // Store EFFECTIVE price (Base + Customizations)
         specialInstructions: item.specialInstructions || null,
         spiceLevel: item.spiceLevel || item.spice_level || null,
+        customizations: validCustomizations // Pass to Model
       });
     }
 

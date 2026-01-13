@@ -16,6 +16,7 @@ class MenuController {
       imageUrl: req.file ? req.file.path : null,
       imageUrl: req.file ? req.file.path : null,
       restaurantId: req.body.restaurantId || req.user.restaurantId,
+      customizationAssignments: req.body.customizationAssignments ? JSON.parse(req.body.customizationAssignments) : [],
     };
     
     if (!itemData.restaurantId) {

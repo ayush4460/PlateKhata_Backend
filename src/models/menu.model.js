@@ -18,8 +18,8 @@ class MenuModel {
       hasSpiceLevels = false, // New field
     } = itemData;
 
-    // Default dietaryType based on isVegetarian if not provided
-    const finalDietaryType = dietaryType || (isVegetarian ? 'veg' : 'non_veg');
+    // Default dietaryType to 'veg' as per user requirement
+    const finalDietaryType = dietaryType || (isVegetarian !== undefined ? (isVegetarian ? 'veg' : 'non_veg') : 'veg');
     // Keep is_vegetarian for backward compatibility (synced with type)
     const finalIsVegetarian = finalDietaryType === 'veg';
 
@@ -63,7 +63,24 @@ class MenuModel {
   static async findAll(filters = {}) {
     // JOIN categories to get category_name for frontend compatibility
     let query = `
-        SELECT m.*, c.name as category_name, c.display_order 
+        SELECT m.*, c.name as category_name, c.display_order,
+        (
+            SELECT json_agg(json_build_object(
+                'group_name', cg.name,
+                'options', (
+                    SELECT json_agg(json_build_object(
+                        'name', co.name,
+                        'priceModifier', COALESCE(ico.price_modifier, 0)
+                    ) ORDER BY co.display_order)
+                    FROM item_customization_options ico
+                    JOIN customization_options co ON ico.option_id = co.option_id
+                    WHERE ico.item_customization_id = ic.item_customization_id
+                )
+            ) ORDER BY ic.display_order)
+            FROM item_customizations ic
+            JOIN customization_groups cg ON ic.group_id = cg.group_id
+            WHERE ic.item_id = m.item_id
+        ) as customization_details
         FROM menu_items m
         LEFT JOIN categories c ON m.category_id = c.category_id
         WHERE 1=1
@@ -112,7 +129,8 @@ class MenuModel {
     // The frontend expects '.category' to be the name string in many places.
     return result.rows.map(row => ({
         ...row,
-        category: row.category_name || row.category // Fallback to old col if join fails? Or just use name.
+        category: row.category_name || row.category,
+        customizationNames: row.customization_names || [] // Map to camelCase
     }));
   }
 
@@ -126,7 +144,13 @@ class MenuModel {
       return null;
     }
     const query = `
-      SELECT m.*, c.name as category_name 
+      SELECT m.*, c.name as category_name,
+      (
+          SELECT json_agg(cg.name)
+          FROM item_customizations ic
+          JOIN customization_groups cg ON ic.group_id = cg.group_id
+          WHERE ic.item_id = m.item_id
+      ) as customization_names 
       FROM menu_items m
       LEFT JOIN categories c ON m.category_id = c.category_id
       WHERE m.item_id = $1
@@ -138,7 +162,8 @@ class MenuModel {
     const row = result.rows[0];
     return {
         ...row,
-        category: row.category_name || row.category // Prefer dynamic name
+        category: row.category_name || row.category,
+        customizationNames: row.customization_names || []
     };
   }
 

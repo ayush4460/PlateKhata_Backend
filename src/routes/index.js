@@ -41,6 +41,7 @@ router.use('/dyno', dynoWebhookRoutes); // Webhook Endpoints (Push/Poll)
 router.use('/uploads', uploadRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/email', emailRoutes);
+router.use('/customizations', require('./customization.routes'));
 router.use('/public', require('./public.routes'));
 
 module.exports = router;

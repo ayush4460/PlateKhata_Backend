@@ -177,9 +177,20 @@ class OrderModel {
         item.itemName,
         item.itemCategory,
         item.specialInstructions,
-        item.spiceLevel || null, // Capture spice level
+        item.spiceLevel || null,
       ]);
-      orderItems.push(result.rows[0]);
+      const insertedItem = result.rows[0];
+
+      if (item.customizations && item.customizations.length > 0) {
+          for (const cust of item.customizations) {
+              await client.query(
+                  `INSERT INTO order_item_customizations (order_item_id, option_id, price, name) VALUES ($1, $2, $3, $4)`,
+                  [insertedItem.order_item_id, cust.optionId, cust.price, cust.name]
+              );
+          }
+      }
+
+      orderItems.push(insertedItem);
     }
     return orderItems;
   }
@@ -201,7 +212,9 @@ class OrderModel {
             'unit_price', oi.unit_price,
             'special_instructions', oi.special_instructions,
             'item_category', oi.item_category,
-            'spice_level', oi.spice_level
+            'spice_level', oi.spice_level,
+            'customizations', (SELECT COALESCE(json_agg(json_build_object('id', oic.option_id, 'name', oic.name, 'price', oic.price)), '[]'::json) FROM order_item_customizations oic WHERE oic.order_item_id = oi.order_item_id)
+
           )
         ORDER BY oi.order_item_id
       ) FILTER (WHERE oi.order_item_id IS NOT NULL) as items
@@ -325,7 +338,9 @@ class OrderModel {
             'unit_price', oi.unit_price,
             'special_instructions', oi.special_instructions,
             'item_category', oi.item_category,
-            'spice_level', oi.spice_level
+            'spice_level', oi.spice_level,
+            'customizations', (SELECT COALESCE(json_agg(json_build_object('id', oic.option_id, 'name', oic.name, 'price', oic.price)), '[]'::json) FROM order_item_customizations oic WHERE oic.order_item_id = oi.order_item_id)
+
           )
         ORDER BY oi.order_item_id
       ) FILTER (WHERE oi.order_item_id IS NOT NULL) as items
@@ -450,7 +465,9 @@ class OrderModel {
             'quantity', oi.quantity,
             'special_instructions', oi.special_instructions,
             'item_category', oi.item_category,
-            'spice_level', oi.spice_level
+            'spice_level', oi.spice_level,
+            'customizations', (SELECT COALESCE(json_agg(json_build_object('id', oic.option_id, 'name', oic.name, 'price', oic.price)), '[]'::json) FROM order_item_customizations oic WHERE oic.order_item_id = oi.order_item_id)
+
           ) ORDER BY oi.order_item_id
         ) FILTER (WHERE oi.order_item_id IS NOT NULL) as items
       FROM orders o
