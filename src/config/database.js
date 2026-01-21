@@ -5,7 +5,9 @@
   if (process.env.DATABASE_URL) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : { rejectUnauthorized: false },
+      // In production, we force permissive SSL for RDS/Cloud db.
+      // In dev, we define 'undefined' so the connection string parameters (sslmode=...) take precedence.
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 30000,
