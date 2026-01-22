@@ -24,6 +24,7 @@ const createS3Storage = (folder) => multerS3({
   s3: s3Client,
   bucket: process.env.AWS_BUCKET_NAME || 'platekhata-ap-south-1',
   contentType: multerS3.AUTO_CONTENT_TYPE,
+  acl: 'public-read', // Ensure public access
   key: function (req, file, cb) {
     const fullPath = getDestinationPath(req, file, folder);
     cb(null, fullPath);
