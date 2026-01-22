@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 const ApiError = require('../utils/apiError');
+const PublicService = require('../services/public.service');
 
 class PublicController {
   
@@ -11,6 +12,11 @@ class PublicController {
    * Get restaurant by slug (Public)
    * GET /api/v1/public/restaurants/:slug
    */
+  static getAllActiveRestaurants = catchAsync(async (req, res) => {
+    const restaurants = await PublicService.getAllActiveRestaurants();
+    return ApiResponse.success(res, restaurants);
+  });
+
   static getRestaurantBySlug = catchAsync(async (req, res) => {
     const { slug } = req.params;
     const restaurant = await RestaurantModel.findBySlug(slug);
