@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { uploadMenuImage, uploadQRCode, uploadGeneral, handleMulterError } = require('../middlewares/upload.middleware');
-const { deleteImage, extractPublicId } = require('../config/cloudinary');
+const { deleteFile } = require('../utils/storage');
 const { authenticate } = require('../middlewares/auth.middleware');
 const authorize = require('../middlewares/rbac.middleware');
 const ApiResponse = require('../utils/apiResponse');
@@ -27,8 +27,8 @@ router.post(
     return ApiResponse.success(
       res,
       {
-        url: req.file.path,
-        publicId: req.file.filename,
+        url: req.file.path || req.file.location,
+        publicId: req.file.filename || req.file.key,
         originalName: req.file.originalname,
       },
       'Image uploaded successfully'
@@ -54,8 +54,8 @@ router.post(
     return ApiResponse.success(
       res,
       {
-        url: req.file.path,
-        publicId: req.file.filename,
+        url: req.file.path || req.file.location,
+        publicId: req.file.filename || req.file.key,
       },
       'QR code uploaded successfully'
     );
@@ -80,8 +80,8 @@ router.post(
     return ApiResponse.success(
       res,
       {
-        url: req.file.path,
-        publicId: req.file.filename,
+        url: req.file.path || req.file.location,
+        publicId: req.file.filename || req.file.key,
         originalName: req.file.originalname,
       },
       'File uploaded successfully'
@@ -105,13 +105,7 @@ router.delete(
       return ApiResponse.badRequest(res, 'Image URL is required');
     }
 
-    const publicId = extractPublicId(url);
-
-    if (!publicId) {
-      return ApiResponse.badRequest(res, 'Invalid Cloudinary URL');
-    }
-
-    const result = await deleteImage(publicId);
+    const result = await deleteFile(url);
 
     return ApiResponse.success(res, result, 'Image deleted successfully');
   })

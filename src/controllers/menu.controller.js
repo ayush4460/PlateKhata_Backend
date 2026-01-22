@@ -2,7 +2,7 @@
 const MenuService = require('../services/menu.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
-const { deleteImage, extractPublicId } = require('../config/cloudinary');
+const { deleteFile } = require('../utils/storage');
 
 class MenuController {
   /**
@@ -12,9 +12,9 @@ class MenuController {
   static createItem = catchAsync(async (req, res) => {
     const itemData = {
       ...req.body,
-      // Use Cloudinary URL if file uploaded, otherwise null
-      imageUrl: req.file ? req.file.path : null,
-      imageUrl: req.file ? req.file.path : null,
+      // Use Cloudinary/S3 URL if file uploaded, otherwise null
+      // req.file.path for Cloudinary, req.file.location for S3
+      imageUrl: req.file ? (req.file.path || req.file.location) : null,
       restaurantId: req.body.restaurantId || req.user.restaurantId,
       customizationAssignments: req.body.customizationAssignments ? JSON.parse(req.body.customizationAssignments) : [],
     };
@@ -72,19 +72,14 @@ class MenuController {
 
     // If new image uploaded
     if (req.file) {
-      // Get old image URL to delete from Cloudinary
+      // Get old image URL to delete from Cloudinary/S3
       const oldItem = await MenuService.getItemById(req.params.id);
       
       if (oldItem && oldItem.image_url) {
-        const oldPublicId = extractPublicId(oldItem.image_url);
-        if (oldPublicId) {
-          await deleteImage(oldPublicId).catch(err =>
-            console.error('Error deleting old image:', err)
-          );
-        }
+        await deleteFile(oldItem.image_url);
       }
 
-      updates.imageUrl = req.file.path; // Cloudinary URL
+      updates.imageUrl = req.file.path || req.file.location; // Cloudinary or S3 URL
     }
 
     const item = await MenuService.updateItem(req.params.id, updates);
@@ -107,12 +102,7 @@ class MenuController {
     const item = await MenuService.getItemById(id);
     
     if (item && item.image_url) {
-      const publicId = extractPublicId(item.image_url);
-      if (publicId) {
-        await deleteImage(publicId).catch(err =>
-          console.error('Error deleting image from Cloudinary:', err)
-        );
-      }
+      await deleteFile(item.image_url);
     }
 
     await MenuService.deleteItem(id);

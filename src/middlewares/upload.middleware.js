@@ -1,24 +1,10 @@
 // src/middlewares/upload.middleware.js
 const multer = require('multer');
 
-// Import Cloudinary storage
-let menuStorage, qrCodeStorage, generalStorage;
+const { menuStorage, qrCodeStorage, generalStorage } = require('../config/upload.config');
 
-try {
-  const cloudinaryConfig = require('../config/cloudinary');
-  menuStorage = cloudinaryConfig.menuStorage;
-  qrCodeStorage = cloudinaryConfig.qrCodeStorage;
-  generalStorage = cloudinaryConfig.generalStorage;
-  console.log('✅ Upload middleware using Cloudinary storage');
-} catch (error) {
-  console.error('❌ Failed to load Cloudinary config:', error.message);
-  console.error('⚠️ Falling back to memory storage (images will not persist!)');
-  
-  // Fallback to memory storage if Cloudinary fails
-  menuStorage = multer.memoryStorage();
-  qrCodeStorage = multer.memoryStorage();
-  generalStorage = multer.memoryStorage();
-}
+// Unified storage is already configured in upload.config.js checks NODE_ENV
+// Logs are also handled there
 
 const ApiError = require('../utils/apiError');
 

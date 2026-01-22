@@ -2,8 +2,23 @@ const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
 const { cloudinary, extractPublicId } = require('../config/cloudinary');
 const config = require('../config/env');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { deleteFile } = require('../utils/storage');
+
+// Initialize S3 Client
+const s3Client = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+});
 
 class QRCodeService {
+  /**
+   * Generate QR code for table
+   */
+ 
   /**
    * Generate QR code for table
    */
@@ -30,15 +45,34 @@ class QRCodeService {
         },
       });
 
-      const uploadResponse = await cloudinary.uploader.upload(dataUrl, {
-        folder: 'restaurant/qr-codes',
-        public_id: `table-${tableNumber}-qr`,
-        overwrite: true,
-        resource_type: 'image'
-      });
+      if (process.env.NODE_ENV === 'production') {
+          // PROD: S3 Upload
+          const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, 'base64');
+          const key = `restaurants/${restaurantId}/qr-codes/table-${tableNumber}.png`;
 
-      // Return URL to access QR code
-      return uploadResponse.secure_url;
+          await s3Client.send(new PutObjectCommand({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: key,
+              Body: buffer,
+              ContentType: 'image/png',
+              // ACL: 'public-read' // Optional: depending on bucket policy
+          }));
+
+          const cdnDomain = process.env.AWS_CDN_DOMAIN || 'your-cdn-domain.cloudfront.net';
+          return `https://${cdnDomain}/${key}`;
+
+      } else {
+          // DEV: Cloudinary Upload
+          const uploadResponse = await cloudinary.uploader.upload(dataUrl, {
+            folder: 'restaurant/qr-codes',
+            public_id: `table-${tableNumber}-qr`,
+            overwrite: true,
+            resource_type: 'image'
+          });
+          return uploadResponse.secure_url;
+      }
+
     } catch (error) {
       console.error('QR Code generation error:', error);
       throw new Error('Failed to generate QR code');
@@ -70,8 +104,7 @@ class QRCodeService {
   static async deleteQRCode(qrCodeUrl) {
     try {
       if (qrCodeUrl) {
-        const publicId = extractPublicId(qrCodeUrl);
-        if(publicId) await cloudinary.uploader.destroy(publicId);
+         await deleteFile(qrCodeUrl);
       }
     } catch (error) {
       console.error('Error deleting QR code:', error);
