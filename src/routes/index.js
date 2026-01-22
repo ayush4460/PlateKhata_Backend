@@ -12,6 +12,7 @@ const uploadRoutes = require('./upload.routes');
 const onlineOrderRoutes = require('./online-order.routes');
 const dynoWebhookRoutes = require('./dyno-webhook.routes');
 const emailRoutes = require('./email.routes');
+const platformAdminRoutes = require('./platformAdmin.routes');
 
 // Health check
 router.get('/', (req, res) => {
@@ -43,5 +44,6 @@ router.use('/settings', settingsRoutes);
 router.use('/email', emailRoutes);
 router.use('/customizations', require('./customization.routes'));
 router.use('/public', require('./public.routes'));
+router.use('/platform', platformAdminRoutes);
 
 module.exports = router;

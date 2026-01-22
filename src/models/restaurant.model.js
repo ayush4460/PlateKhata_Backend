@@ -5,11 +5,11 @@ class RestaurantModel {
    * Create new restaurant
    */
   static async create(restaurantData) {
-    const { name, address, contactEmail, isActive } = restaurantData;
+    const { name, address, contactEmail, isActive, slug } = restaurantData;
 
     const query = `
-      INSERT INTO restaurants (name, address, contact_email, is_active)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO restaurants (name, address, contact_email, is_active, slug)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
 
@@ -18,6 +18,7 @@ class RestaurantModel {
       address,
       contactEmail,
       isActive !== undefined ? isActive : true,
+      slug
     ]);
 
     return result.rows[0];
