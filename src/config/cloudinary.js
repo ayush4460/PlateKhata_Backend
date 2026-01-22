@@ -18,11 +18,13 @@ console.log('📋 Cloudinary Config:', {
   api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing',
 });
 
-// Test connection (Skip in test environment)
-if (process.env.NODE_ENV !== 'test') {
+// Test connection (Skip in test environment or if credentials missing)
+if (process.env.NODE_ENV !== 'test' && process.env.CLOUDINARY_CLOUD_NAME) {
   cloudinary.api.ping()
     .then(() => console.log('✅ Cloudinary connected successfully'))
     .catch(err => console.error('❌ Cloudinary connection error:', err.message));
+} else {
+    console.log('ℹ️ Cloudinary ping skipped (test env or missing credentials)');
 }
 
 // Storage for Menu Items
