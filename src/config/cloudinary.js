@@ -26,36 +26,47 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Storage for Menu Items
-const menuStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'restaurant/menu-items',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-    transformation: [
-      { width: 800, height: 600, crop: 'limit' },
-      { quality: 'auto:good' },
-    ],
-  },
-});
+let menuStorage, qrCodeStorage, generalStorage;
 
-// Storage for QR Codes
-const qrCodeStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'restaurant/qr-codes',
-    allowed_formats: ['png', 'jpg', 'jpeg'],
-    public_id: (req, file) => `qr-${Date.now()}`,
-  },
-});
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  menuStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'restaurant/menu-items',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+      transformation: [
+        { width: 800, height: 600, crop: 'limit' },
+        { quality: 'auto:good' },
+      ],
+    },
+  });
 
-// Storage for General Uploads
-const generalStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'restaurant/uploads',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
-  },
-});
+  // Storage for QR Codes
+  qrCodeStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'restaurant/qr-codes',
+      allowed_formats: ['png', 'jpg', 'jpeg'],
+      public_id: (req, file) => `qr-${Date.now()}`,
+    },
+  });
+
+  // Storage for General Uploads
+  generalStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'restaurant/uploads',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
+    },
+  });
+} else {
+  console.warn('⚠️ Cloudinary credentials missing. Cloudinary storage disabled.');
+  // dummy storage to prevent export errors, though they shouldn't be used in PROD if configured correctly
+  const multer = require('multer');
+  menuStorage = multer.memoryStorage();
+  qrCodeStorage = multer.memoryStorage();
+  generalStorage = multer.memoryStorage();
+}
 
 /**
  * Delete image from Cloudinary

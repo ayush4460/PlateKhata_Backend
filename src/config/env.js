@@ -70,14 +70,14 @@ if (!process.env.DATABASE_URL) {
   requiredEnvVars.push('DATABASE_URL');
 }
 
-// Validate Cloudinary in production
-if (process.env.NODE_ENV === 'production') {
-  requiredEnvVars.push(
-    'CLOUDINARY_CLOUD_NAME',
-    'CLOUDINARY_API_KEY',
-    'CLOUDINARY_API_SECRET'
-  );
-}
+// Validate Cloudinary in production - REMOVED for Hybrid/S3 migration
+// if (process.env.NODE_ENV === 'production') {
+//   requiredEnvVars.push(
+//     'CLOUDINARY_CLOUD_NAME',
+//     'CLOUDINARY_API_KEY',
+//     'CLOUDINARY_API_SECRET'
+//   );
+// }
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
