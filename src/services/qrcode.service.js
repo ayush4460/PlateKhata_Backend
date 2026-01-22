@@ -56,7 +56,7 @@ class QRCodeService {
               Key: key,
               Body: buffer,
               ContentType: 'image/png',
-              ACL: 'public-read' // Ensure public access
+              // ACL: 'public-read' // Removed: Bucket has ACLs disabled
           }));
 
           const cdnDomain = process.env.AWS_CDN_DOMAIN || 'your-cdn-domain.cloudfront.net';
