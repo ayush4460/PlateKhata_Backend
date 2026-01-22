@@ -2,7 +2,7 @@
 const MenuService = require('../services/menu.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
-const { deleteFile } = require('../utils/storage');
+const { deleteFile, getFileUrl } = require('../utils/storage');
 
 class MenuController {
   /**
@@ -13,8 +13,8 @@ class MenuController {
     const itemData = {
       ...req.body,
       // Use Cloudinary/S3 URL if file uploaded, otherwise null
-      // req.file.path for Cloudinary, req.file.location for S3
-      imageUrl: req.file ? (req.file.path || req.file.location) : null,
+      // req.file.path for Cloudinary, req.file.key -> CDN URL for S3
+      imageUrl: req.file ? (req.file.path || getFileUrl(req.file.key)) : null,
       restaurantId: req.body.restaurantId || req.user.restaurantId,
       customizationAssignments: req.body.customizationAssignments ? JSON.parse(req.body.customizationAssignments) : [],
     };
@@ -79,7 +79,7 @@ class MenuController {
         await deleteFile(oldItem.image_url);
       }
 
-      updates.imageUrl = req.file.path || req.file.location; // Cloudinary or S3 URL
+      updates.imageUrl = req.file.path || getFileUrl(req.file.key); // Cloudinary or S3 CDN URL
     }
 
     const item = await MenuService.updateItem(req.params.id, updates);

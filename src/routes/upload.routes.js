@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { uploadMenuImage, uploadQRCode, uploadGeneral, handleMulterError } = require('../middlewares/upload.middleware');
-const { deleteFile } = require('../utils/storage');
+const { deleteFile, getFileUrl } = require('../utils/storage');
 const { authenticate } = require('../middlewares/auth.middleware');
 const authorize = require('../middlewares/rbac.middleware');
 const ApiResponse = require('../utils/apiResponse');
@@ -27,7 +27,7 @@ router.post(
     return ApiResponse.success(
       res,
       {
-        url: req.file.path || req.file.location,
+        url: req.file.path || getFileUrl(req.file.key),
         publicId: req.file.filename || req.file.key,
         originalName: req.file.originalname,
       },
@@ -54,7 +54,7 @@ router.post(
     return ApiResponse.success(
       res,
       {
-        url: req.file.path || req.file.location,
+        url: req.file.path || getFileUrl(req.file.key),
         publicId: req.file.filename || req.file.key,
       },
       'QR code uploaded successfully'
@@ -80,7 +80,7 @@ router.post(
     return ApiResponse.success(
       res,
       {
-        url: req.file.path || req.file.location,
+        url: req.file.path || getFileUrl(req.file.key),
         publicId: req.file.filename || req.file.key,
         originalName: req.file.originalname,
       },
