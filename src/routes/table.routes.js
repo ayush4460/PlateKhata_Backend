@@ -50,14 +50,14 @@ router.post(
 router.get(
   '/',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.SUPERVISOR),
   TableController.getAllTables
 );
 
 router.get(
   '/:id',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.SUPERVISOR),
   TableController.getTableById
 );
 
@@ -73,7 +73,7 @@ router.put(
 router.post(
   '/:id/clear',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.SUPERVISOR),
   TableController.clearTable
 );
 
@@ -87,7 +87,7 @@ router.delete(
 router.post(
   '/move',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.SUPERVISOR),
   [
     body('sourceTableId').isInt().withMessage('Invalid source table ID'),
     body('targetTableId').isInt().withMessage('Invalid target table ID'),
@@ -99,7 +99,7 @@ router.post(
 router.patch(
   '/:id/customer',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.SUPERVISOR),
   [
     body('customerName').optional().trim(),
     body('customerPhone').optional().trim(),

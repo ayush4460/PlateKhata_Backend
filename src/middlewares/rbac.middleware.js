@@ -11,7 +11,10 @@ const authorize = (...allowedRoles) => {
       throw ApiError.unauthorized('Authentication required');
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRole = req.user.role ? req.user.role.toLowerCase() : '';
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+
+    if (!normalizedAllowed.includes(userRole)) {
       console.log(`[RBAC ERROR] User Role: ${req.user.role}, Allowed: ${allowedRoles}, UserID: ${req.user.userId}`);
       throw ApiError.forbidden('Insufficient permissions');
     }

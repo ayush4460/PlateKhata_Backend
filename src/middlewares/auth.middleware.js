@@ -23,7 +23,7 @@ exports.authenticate = catchAsync(async (req, res, next) => {
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
-      role: decoded.role,
+      role: decoded.role ? decoded.role.toLowerCase() : decoded.role,
       restaurantId: decoded.restaurantId,
     };
 
@@ -47,7 +47,7 @@ exports.optionalAuth = catchAsync(async (req, res, next) => {
       req.user = {
         userId: decoded.userId,
         email: decoded.email,
-        role: decoded.role,
+        role: decoded.role ? decoded.role.toLowerCase() : decoded.role,
         restaurantId: decoded.restaurantId,
       };
     } catch (error) {

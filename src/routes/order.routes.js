@@ -36,7 +36,7 @@ router.get(
 router.get(
   '/stats',
   authenticate,
-  authorize(ROLES.ADMIN),
+  authorize(ROLES.ADMIN, ROLES.SUPERVISOR),
   OrderController.getOrderStats
 );
 
@@ -53,7 +53,7 @@ router.get('/:id', optionalAuth, OrderController.getOrderById);
 router.patch(
   '/:id/status',
   authenticate,
-  authorize(ROLES.KITCHEN, ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.KITCHEN, ROLES.ADMIN, ROLES.WAITER, ROLES.SUPERVISOR),
   updateOrderStatusValidator,
   validate,
   OrderController.updateOrderStatus
@@ -64,7 +64,7 @@ router.patch(
 router.patch(
   '/:id/payment',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.KITCHEN, ROLES.SUPERVISOR),
   updatePaymentStatusValidator,
   validate,
   OrderController.updatePaymentStatus
@@ -74,7 +74,7 @@ router.patch(
 router.patch(
   '/session/:sessionId/total',
   authenticate,
-  authorize(ROLES.ADMIN),
+  authorize(ROLES.ADMIN, ROLES.SUPERVISOR),
   validate, // strictly we should have a validator here but body.total is checked in controller
   OrderController.updateSessionTotal
 );
@@ -90,7 +90,7 @@ router.patch(
 router.post(
   '/:id/clear',
   authenticate,
-  authorize(ROLES.ADMIN, ROLES.WAITER),
+  authorize(ROLES.ADMIN, ROLES.WAITER, ROLES.SUPERVISOR),
   TableController.clearTable
 );
 

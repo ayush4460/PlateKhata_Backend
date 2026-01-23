@@ -3,6 +3,7 @@ module.exports = {
   ROLES: {
     SUPER_ADMIN: 'super_admin',
     ADMIN: 'admin',
+    SUPERVISOR: 'supervisor',
     KITCHEN: 'kitchen',
     WAITER: 'waiter',
   },

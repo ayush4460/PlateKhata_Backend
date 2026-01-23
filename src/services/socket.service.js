@@ -61,7 +61,7 @@ class SocketService {
 
       // Join kitchen room - RESTRICTED
       socket.on('join:kitchen', () => {
-        if (!socket.user || (socket.user.role !== 'admin' && socket.user.role !== 'kitchen')) {
+        if (!socket.user || (socket.user.role !== 'admin' && socket.user.role !== 'kitchen' && socket.user.role !== 'supervisor')) {
           console.warn('Unauthorized attempt to join kitchen:', socket.id);
           return; // Silently ignore or emit error
         }

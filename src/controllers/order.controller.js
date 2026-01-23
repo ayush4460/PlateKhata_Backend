@@ -63,8 +63,8 @@ static getAllOrders = catchAsync(async (req, res) => {
   console.debug('[CTRL getAllOrders] query:', { tableId, status, date, limit });
   console.debug('[CTRL getAllOrders] x-session-token present:', !!sessionToken);
 
-  // Staff: allow full access / table-level queries (admin / waiter / kitchen)
-  if (user && (user.role === ROLES.ADMIN || user.role === ROLES.WAITER || user.role === ROLES.KITCHEN)) {
+  // Staff: allow full access / table-level queries (admin / waiter / kitchen / supervisor)
+  if (user && (user.role === ROLES.ADMIN || user.role === ROLES.WAITER || user.role === ROLES.KITCHEN || user.role === ROLES.SUPERVISOR || user.role === ROLES.SUPER_ADMIN)) {
     // Staff can query all tables or specific table
     if (tableId) filters.tableId = tableId;
     if (status) filters.status = Array.isArray(status) ? status : [status];
