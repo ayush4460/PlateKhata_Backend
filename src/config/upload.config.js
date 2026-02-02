@@ -8,23 +8,13 @@ const cloudinaryConfig = require('./cloudinary');
 // Import S3 Storage
 const s3Config = require('./s3');
 
-const isProduction = process.env.NODE_ENV === 'production';
+// Cloudinary is now used for BOTH Production and Development
+// The folder structure is handled dynamically in cloudinary.js
+menuStorage = cloudinaryConfig.menuStorage;
+qrCodeStorage = cloudinaryConfig.qrCodeStorage;
+generalStorage = cloudinaryConfig.generalStorage;
 
-let menuStorage, qrCodeStorage, generalStorage;
-
-if (isProduction) {
-    console.log('✅ PROD: Using AWS S3 Storage');
-    // Using multer-s3 for production
-    menuStorage = s3Config.createS3Storage('menu-items');
-    qrCodeStorage = s3Config.createS3Storage('qr-codes');
-    generalStorage = s3Config.createS3Storage('uploads');
-} else {
-    console.log('🚧 DEV: Using Cloudinary Storage');
-    // Using Cloudinary for development
-    menuStorage = cloudinaryConfig.menuStorage;
-    qrCodeStorage = cloudinaryConfig.qrCodeStorage;
-    generalStorage = cloudinaryConfig.generalStorage;
-}
+console.log('☁️ Storage Config: Using Cloudinary for all environments');
 
 module.exports = {
     menuStorage,

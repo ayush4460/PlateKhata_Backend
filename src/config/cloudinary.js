@@ -34,7 +34,10 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
   menuStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-      folder: 'restaurant/menu-items',
+      folder: (req, file) => {
+          const restaurantId = req.body.restaurantId || req.user?.restaurantId || 'common';
+          return `restaurants/${restaurantId}/menu-items`;
+      },
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
       transformation: [
         { width: 800, height: 600, crop: 'limit' },
@@ -47,7 +50,13 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
   qrCodeStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-      folder: 'restaurant/qr-codes',
+      folder: (req, file) => {
+          // QR codes usually come from table service which might not have req.body populated the same way via upload middleware
+          // But strict usage here via multer matches upload middleware usage.
+          // For manual upload via service, we define folder manually there.
+          const restaurantId = req.body.restaurantId || req.user?.restaurantId || 'common';
+          return `restaurants/${restaurantId}/qr-codes`;
+      },
       allowed_formats: ['png', 'jpg', 'jpeg'],
       public_id: (req, file) => `qr-${Date.now()}`,
     },
@@ -57,7 +66,10 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
   generalStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-      folder: 'restaurant/uploads',
+        folder: (req, file) => {
+            const restaurantId = req.body.restaurantId || req.user?.restaurantId || 'common';
+            return `restaurants/${restaurantId}/uploads`;
+        },
       allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
     },
   });

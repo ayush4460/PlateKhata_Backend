@@ -45,33 +45,19 @@ class QRCodeService {
         },
       });
 
-      if (process.env.NODE_ENV === 'production') {
-          // PROD: S3 Upload
-          const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-          const buffer = Buffer.from(base64Data, 'base64');
-          const key = `restaurants/${restaurantId}/qr-codes/table-${tableNumber}.png`;
-
-          await s3Client.send(new PutObjectCommand({
-              Bucket: process.env.AWS_BUCKET_NAME,
-              Key: key,
-              Body: buffer,
-              ContentType: 'image/png',
-              // ACL: 'public-read' // Removed: Bucket has ACLs disabled
-          }));
-
-          const cdnDomain = process.env.AWS_CDN_DOMAIN || 'your-cdn-domain.cloudfront.net';
-          return `https://${cdnDomain}/${key}`;
-
-      } else {
-          // DEV: Cloudinary Upload
-          const uploadResponse = await cloudinary.uploader.upload(dataUrl, {
-            folder: 'restaurant/qr-codes',
-            public_id: `table-${tableNumber}-qr`,
-            overwrite: true,
-            resource_type: 'image'
-          });
-          return uploadResponse.secure_url;
-      }
+      // Cloudinary Upload for ALL environments (Dev & Prod)
+      // Folder structure: restaurants/{restaurantId}/qr-codes
+      const folderPath = `restaurants/${restaurantId}/qr-codes`;
+      
+      const uploadResponse = await cloudinary.uploader.upload(dataUrl, {
+        folder: folderPath,
+        public_id: `table-${tableNumber}-qr`,
+        overwrite: true,
+        resource_type: 'image'
+      });
+      
+      console.log(`✅ QR Code uploaded to Cloudinary: ${uploadResponse.secure_url}`);
+      return uploadResponse.secure_url;
 
     } catch (error) {
       console.error('QR Code generation error:', error);
