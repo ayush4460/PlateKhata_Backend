@@ -19,6 +19,8 @@ class SocketService {
       "http://localhost:5000",
       "http://localhost:9002",
       "http://127.0.0.1:9002",
+      "https://platekhata.in",
+      "https://www.platekhata.in",
     ].filter(Boolean);
 
     // Remove duplicates
