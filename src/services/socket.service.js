@@ -104,13 +104,18 @@ class SocketService {
   emitNewOrder(order) {
     if (this.io) {
       this.io.to('kitchen').emit('order:new', order);
+
+      // FIX: Emit to restaurant admin room as well!
+      if (order.restaurant_id) {
+          this.io.to(`restaurant_${order.restaurant_id}`).emit('order:new', order);
+      }
     }
   }
 
   /**
    * Emit order status update
    */
-  emitOrderStatusUpdate(orderId, status, tableId) {
+  emitOrderStatusUpdate(orderId, status, tableId, restaurantId) {
     if (this.io) {
       // Notify kitchen
       this.io.to('kitchen').emit('order:statusUpdate', { orderId, status });
@@ -121,6 +126,15 @@ class SocketService {
         status,
         tableId, // Added for frontend context
       });
+
+      // Notify Restaurant Admin Dashboard
+      if (restaurantId) {
+          this.io.to(`restaurant_${restaurantId}`).emit('order:statusUpdate', {
+              orderId,
+              status,
+              tableId
+          });
+      }
     }
   }
 

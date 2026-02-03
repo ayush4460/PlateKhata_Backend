@@ -141,7 +141,7 @@ static getAllOrders = catchAsync(async (req, res) => {
     const { status } = req.body;
     const order = await OrderService.updateOrderStatus(req.params.id, status);
     // This line now works
-    socketService.emitOrderStatusUpdate(order.order_id, status, order.table_id);
+    socketService.emitOrderStatusUpdate(order.order_id, status, order.table_id, order.restaurant_id);
     return ApiResponse.success(res, order, 'Order status updated successfully');
   });
 
@@ -155,7 +155,8 @@ static getAllOrders = catchAsync(async (req, res) => {
     socketService.emitOrderStatusUpdate(
       order.order_id,
       order.order_status,
-      order.table_id
+      order.table_id,
+      order.restaurant_id
     );
 
     return ApiResponse.success(res, order, 'Payment status updated successfully');
@@ -175,7 +176,8 @@ static getAllOrders = catchAsync(async (req, res) => {
     socketService.emitOrderStatusUpdate(
       order.order_id,
       order.order_status,
-      order.table_id
+      order.table_id,
+      order.restaurant_id
     );
 
     return ApiResponse.success(res, order, 'Payment verification requested');
@@ -200,7 +202,8 @@ static getAllOrders = catchAsync(async (req, res) => {
       socketService.emitOrderStatusUpdate(
         order.order_id,
         order.order_status,
-        order.table_id
+        order.table_id,
+        order.restaurant_id
       );
     }
 
