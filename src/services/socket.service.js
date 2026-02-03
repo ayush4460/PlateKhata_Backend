@@ -34,6 +34,7 @@ class SocketService {
         credentials: true,
         methods: ["GET", "POST"]
       },
+      path: '/api/socket.io' // Route via /api to bypass Nginx default location
     });
 
     // Middleware for authentication
