@@ -18,39 +18,11 @@ class SessionService {
 
         if (existingRes.rows.length > 0) {
             const session = existingRes.rows[0];
-
-            // 1. CONCURRENT ORDERS CHECK (Time Gap)
-            // If session was created very recently (e.g., < 30 seconds), it's likely part of a burst of requests.
-            // Trust it immediately to ensure all items in this burst get the same session.
-            // User requested 10s gap, using 30s as a safe buffer.
-            const sessionAgeMs = Date.now() - new Date(session.created_at).getTime();
-            if (sessionAgeMs < 30000) { 
-                console.log(`[SessionService] Reusing recent session ${session.session_id} (Age: ${sessionAgeMs}ms)`);
-                return session;
-            }
-
-            // 2. EXISTING ORDERS CHECK (Running or Paid Status)
-            // Check if the session has any valid orders (Pending, Active, or Paid/Completed).
-            // We only filter out 'cancelled' to treat sessions with only cancelled orders as empty.
-            // This ensures "Paid & Occupied" tables can accept new Add-ons.
-            const hasOrdersRes = await client.query(
-                `SELECT 1 FROM orders
-                    WHERE session_id = $1
-                    AND order_status != 'cancelled'
-                    LIMIT 1`,
-                [session.session_id]
-            );
-
-            if (hasOrdersRes.rows.length > 0) {
-                // Session is occupied/used (Running or Paid)
-                return session;
-            }
-
-            // 3. EXPIRE STALE EMPTY SESSION
-            // If we are here, session is Old (>30s) AND Empty (No valid orders).
-            // It is likely a "ghost" session from an abandoned attempt.
-            console.log(`[SessionService] Expiring stale empty session ${session.session_id}`);
-            await this.expireSession(session.session_id, client);
+            // SIMPLIFIED: Always reuse an active session if it exists. 
+            // This prevents duplicate session creation during race conditions or rapid ordering.
+            // Stale empty sessions should be cleaned up by a background cron job if needed.
+            console.log(`[SessionService] Reusing existing session ${session.session_id}`);
+            return session;
         }
 
         // Create a fresh session
