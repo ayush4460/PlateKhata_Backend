@@ -8,5 +8,6 @@ router.get('/restaurants', PublicController.getAllActiveRestaurants);
 router.get('/restaurants/:slug', PublicController.getRestaurantBySlug);
 router.get('/restaurants/:slug/menu', PublicController.getMenuBySlug);
 router.get('/tables/verify', PublicController.verifyTableToken);
+router.post('/book-demo', PublicController.bookDemo);
 
 module.exports = router;

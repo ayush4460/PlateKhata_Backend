@@ -134,6 +134,68 @@ class EmailService {
           throw error;
       }
   }
+
+  /**
+   * Send Demo Request Email to Admin
+   * @param {Object} details - { name, restaurantName, phone, city, email }
+   */
+  async sendDemoRequestEmail(details) {
+      const adminEmail = 'ayushgzala@gmail.com'; 
+      const subject = `🚀 New Demo Request from ${details.name}`;
+      
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #ea580c; border-bottom: 2px solid #ea580c; padding-bottom: 10px;">New Demo Request</h2>
+          <p>You have received a new request for a PlateKhata demo.</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <tr>
+              <td style="padding: 10px; font-weight: bold; background-color: #f9f9f9; border-bottom: 1px solid #eee;">Name:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${details.name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; font-weight: bold; background-color: #f9f9f9; border-bottom: 1px solid #eee;">Restaurant:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${details.restaurantName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; font-weight: bold; background-color: #f9f9f9; border-bottom: 1px solid #eee;">Phone:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <a href="tel:${details.phone}" style="color: #0070f3; text-decoration: none;">${details.phone}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; font-weight: bold; background-color: #f9f9f9; border-bottom: 1px solid #eee;">City:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${details.city}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; font-weight: bold; background-color: #f9f9f9; border-bottom: 1px solid #eee;">Email:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                <a href="mailto:${details.email}" style="color: #0070f3; text-decoration: none;">${details.email}</a>
+              </td>
+            </tr>
+          </table>
+
+          <p style="margin-top: 30px; font-size: 12px; color: #888;">
+            Sent from PlateKhata Landing Page
+          </p>
+        </div>
+      `;
+
+      try {
+          console.log(`[EmailService] Sending demo request to ${adminEmail}...`);
+          const info = await this.transporter.sendMail({
+            from: process.env.SMTP_FROM,
+            to: adminEmail,
+            subject: subject,
+            html: htmlBody
+          });
+          console.log(`[EmailService] Demo request sent: ${info.messageId}`);
+          return info;
+      } catch (error) {
+          console.error(`[EmailService] Error sending demo request:`, error);
+          throw error;
+      }
+  }
 }
 
 // Export a single instance

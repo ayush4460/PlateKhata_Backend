@@ -95,6 +95,26 @@ class PublicController {
     }
   });
 
+  /**
+   * Submit a demo booking request
+   * POST /api/v1/public/book-demo
+   * Body: { name, restaurantName, phone, city, email }
+   */
+  static bookDemo = catchAsync(async (req, res) => {
+    const { name, restaurantName, phone, city, email } = req.body;
+
+    // Basic validation
+    if (!name || !restaurantName || !phone || !city || !email) {
+      throw ApiError.badRequest('All fields are required (Name, Restaurant Name, Phone, City, Email)');
+    }
+
+    // Send email
+    const EmailService = require('../services/email.service');
+    await EmailService.sendDemoRequestEmail({ name, restaurantName, phone, city, email });
+
+    return ApiResponse.success(res, { message: 'Demo request submitted successfully. We will contact you soon!' });
+  });
+
 }
 
 module.exports = PublicController;
